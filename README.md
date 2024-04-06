@@ -1,5 +1,10 @@
 # hackwp
 
+This is a work in progress. It is not ready yet.
+The main idea is to create a tool that combines the best from `wpscan` and `msf` to be used by pentesters, webmasters and sysadmins to test their own sites, equipment and infrastructure.
+
+I will create both exploits and payloads as I see fit but it would be very much appreciated if the community would help with that.
+
 ## Usage
 
 **Installation**
