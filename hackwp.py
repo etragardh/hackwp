@@ -2,29 +2,14 @@
 
 import argparse, os
 from session import *
+from helpers import * 
 from importlib.machinery import SourceFileLoader
-
-print("-------------------------------------")
-print("--- Attack info: --------------------")
-print("- Target:   https://bd.blueteamer.io")
-print("- Vector:   bricks")
-print("- Exploit:  1.9.6-rce")
-print("- Payload:  rshell")
-print("-------------------------------------")
-print("+ Taget is running bricks 1.9.4")
-print("+ Taget is vulnerable")
-print("+ Payload installed to /rshell.php")
-print("-------------------------------------")
-print("- Thanks for using hackwp")
-print("- Need help, visit our discord")
-print("- https://discord.gg/JN55bCvp")
-exit()
 
 # --attack wp           --exploit installation      (unathenticated)
 # --attack wp           --exploit dos               (unathenticated)
 # --attack wp           --exploit login-spray       (unathenticated)
 # --attack wp           --exploit user-list         (unathenticated)
-# --attack-bricks       --attack 1.9.6-rce          (unathenticated)
+#-> --attack-bricks       --attack 1.9.6-rce          (unathenticated)
 # --attack-bricks       --attack 1.9.6.1-rce        (authenticated with builder edit + admin preview)
 # --attack-bricks       --attack 1.9.7-rce          (authenticated with admin + builder code exec)
 # --attack-breakdance   --attack 1.7.0-rce          (authenticated with builder edit)
@@ -33,7 +18,7 @@ exit()
 # --attack-wordfence    --attack 7.6.1-2fa          (unathenticated + sql read)
 # --attack-layerslider  --attack 7.10.0-sqli        (unathenticated)
 # --session-extract     --wp-user --wp-password     ()
-# --session-auth                                    ()
+#-> --session-auth                                    ()
 
 # new syntax:
 # hackwp --attack <module> --exploit <exploit> --payload <payload> --target <url> [--session-auth] [$1] [$2]
@@ -53,7 +38,7 @@ exit()
 parser = argparse.ArgumentParser(
     prog='HackWP',
     description='Utility to hack wordpress sites',
-    epilog="Don't hack shit without permission!\r\nFurther help in blueteamer discord")
+    epilog="Don't hack shit without permission! help in blueteamer discord")
 
 parser.add_argument(
     '-u', '--wp-user',
@@ -95,14 +80,14 @@ print(args)
 
 ##
 # Create ~/.hackwp directory if not exists
-hackwp_dir = os.path.expanduser('~/.hackwp')
+hackwp_dir = get_hackwp_dir() 
 if not os.path.isdir(hackwp_dir):
-    print("~/.hackwp path not found..")
+    perror("~/.hackwp path not found..")
     try:
         os.mkdir(hackwp_dir)
-        print("~/.hackwp created")
+        pinfo("~/.hackwp created")
     except OSError as error:
-        print(error)
+        perror(error)
 
 ##
 # Normalize --target
@@ -118,8 +103,10 @@ if args.session_extract:
 ##
 # Start attack mode
 if args.attack:
-    if not args.exploit:
-        print("--exploit is required")
+    if not args.exploit or not args.target or not args.payload:
+        perror("--exploit is required")
+        perror("--target is required")
+        perror("--payload is required")
         exit()
     module  = args.attack
     exploit = args.exploit
