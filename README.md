@@ -23,7 +23,20 @@ gh repo clone etragardh/hackwp
 ln -s hackwp/hackwp.py /usr/local/bin/hackwp
 ```
 
+## Supported/tested platforms
+Im running MacOS, Kali and Parrot on my laptop.
+These are the tested systems and there should be very few compatibility issues.
 
+However hackwp is written in python and should run fine on most linux.
+Let me know if it does not run on any of these and I will try to fix it.
+
++ macos (tested)
++ kali (tested)
++ parrot (tested)
++ ubuntu/debian
++ arch
++ redhat
++ centos
 
 **Help**
 ```

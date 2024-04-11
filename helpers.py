@@ -1,4 +1,4 @@
-import pickle, os
+import pickle, os, base64, re
 
 # HackWP directory
 def get_hackwp_dir():
@@ -23,6 +23,10 @@ def load_cookies(domain):
     with open(hackwp_dir+'/'+domain+'.session', 'rb') as f:
         return pickle.load(f)
 
+## Short "unique" ID
+def uid(n=8):
+    b64 = base64.b64encode(os.urandom(32))[:n].decode('utf-8')
+    return re.sub("(\+|\@|\\/)", 'x', b64)
 
 ####
 ## Print in Color

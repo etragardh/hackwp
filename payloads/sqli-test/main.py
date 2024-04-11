@@ -12,19 +12,18 @@ import os
 # Dependency
 # What dependency does this payload have
 def get_dep():
-    return ['RCE']
+    return ['SQLi']
 
 ##
 # Detonate payload
 # Return the code to execut
 # or the file path to be uploaded
 def detonate(vuln, args):
-    if vuln == 'RCE':
-        # If we have RCE. Return PHP code
+    if vuln == 'SQLi':
+        # If we have SQLi
         if args.pos:
             return args.pos
         else:
             return [
-                "<?php echo 'Testing RCE 1'; ?>",
-                "<?php echo 'Testing RCE 2'; ?>",
+                "SELECT count(*) FROM wp_users;",
             ]

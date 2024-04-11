@@ -3,6 +3,7 @@
 import argparse, os
 from session import *
 from helpers import * 
+from scanner import * 
 from importlib.machinery import SourceFileLoader
 
 # --attack wp           --exploit installation      (unathenticated)
@@ -55,6 +56,17 @@ parser.add_argument(
     action='store_true',
     help=session_extract_help()
 )
+parser.add_argument(
+    '-z', '--scan',
+    action='store_true',
+    help="Scan the target for vulnerabilities exploitable by HackWP"
+)
+
+parser.add_argument(
+    '-v', '--verbose',
+    action='store_true',
+    help=session_extract_help()
+)
 
 parser.add_argument(
     '-A', '--session-auth',
@@ -78,6 +90,9 @@ parser.add_argument(
 parser.add_argument(
     '-x', '--payload',
     help='exploit module'
+)
+parser.add_argument(
+    'pos', nargs='*'
 )
 
 args = parser.parse_args()
@@ -103,6 +118,12 @@ if args.target:
 # Extract sessions and exit
 if args.session_extract:
     session_extract(args)
+    exit()
+
+##
+# Scan target and exit
+if args.scan:
+    scanner(args);
     exit()
 
 ##
@@ -132,7 +153,7 @@ if args.attack:
     pinfo("== by @etragardh") 
     pinfo("===================================================")
     pinfo("== Attacking: "+args.target) 
-    pinfo("== Module: "+args.attack)
+    pinfo("== Surface: "+args.attack)
     pinfo("== Exploit: "+args.exploit) 
     pinfo("== Payload: "+args.payload)
     pinfo("===================================================")

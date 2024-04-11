@@ -18,7 +18,7 @@ def get_dep():
 # Detonate payload
 # Return the code to execut
 # or the file path to be uploaded
-def detonate(vuln):
+def detonate(vuln, args):
     if vuln == 'RCE':
         # If we have RCE. Return PHP code
         return [
