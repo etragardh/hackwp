@@ -127,11 +127,10 @@ if args.session_extract:
 
 ##
 # Print version and exit
-if args.version:
-    hwp_ascii()
-    v = get_version()
-    psuccess("Version:", v)
-    exit()
+#if args.version:
+#    hwp_ascii()
+#    psuccess("Version:", get_version())
+#    exit()
 
 ##
 # Scan target and exit
@@ -174,3 +173,4 @@ if args.attack:
     exit()
 
 hwp_ascii()
+psuccess("Version:", get_version())

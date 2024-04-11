@@ -13,7 +13,6 @@ hackwp_dir = get_hackwp_dir()
 ###
 # Run ASCII art
 def hwp_ascii(size='auto'):
-    print (os.get_terminal_size())
     cols, rows = os.get_terminal_size()
 
     if size == 'auto':
@@ -26,7 +25,7 @@ def hwp_ascii(size='auto'):
         else:
             size = 'tiny'
 
-    with open('owl.'+size+'.ascii', 'r') as f:
+    with open('assets/owl.'+size+'.ascii', 'r') as f:
         print(f.read())
 
 # Check if payload is compatible with exploit
