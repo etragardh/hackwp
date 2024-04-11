@@ -42,6 +42,11 @@ parser = argparse.ArgumentParser(
     epilog="Don't hack shit without permission! help in blueteamer discord")
 
 parser.add_argument(
+    '-y', '--version',
+    action='store_true',
+    help='Display version'
+)
+parser.add_argument(
     '-u', '--wp-user',
     help='The WP user_login or user_email'
 )
@@ -121,6 +126,14 @@ if args.session_extract:
     exit()
 
 ##
+# Print version and exit
+if args.version:
+    hwp_ascii()
+    v = get_version()
+    psuccess("Version:", v)
+    exit()
+
+##
 # Scan target and exit
 if args.scan:
     scanner(args);
@@ -160,7 +173,4 @@ if args.attack:
     exploit.attack(args, payload)
     exit()
 
-###
-# Run ASCII art
-with open('owl.ascii', 'r') as f:
-    print(f.read())
+hwp_ascii()

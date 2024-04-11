@@ -1,10 +1,33 @@
 import pickle, os, base64, re
 
+# HackWP Version
+def get_version():
+    return "0.1-beta"
+
 # HackWP directory
 def get_hackwp_dir():
     return os.path.expanduser('~/.hackwp')
 
 hackwp_dir = get_hackwp_dir() 
+
+###
+# Run ASCII art
+def hwp_ascii(size='auto'):
+    print (os.get_terminal_size())
+    cols, rows = os.get_terminal_size()
+
+    if size == 'auto':
+        if cols >= 100:
+            size = 'large'
+        elif cols >= 77:
+            size = 'medium'
+        elif cols >= 75:
+            size = 'small'
+        else:
+            size = 'tiny'
+
+    with open('owl.'+size+'.ascii', 'r') as f:
+        print(f.read())
 
 # Check if payload is compatible with exploit
 # get_vuln is a list ['RCE', 'SQLi', 'CODEi', 'XSSs']

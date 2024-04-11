@@ -22,7 +22,7 @@ def scanner(args):
             if surface == '__pycache__':
                 continue
        
-            pinfo("Scanning surface: ", surface)
+            #pinfo("Scanning surface: ", surface)
 
 
             surface_scan_path = './exploits/'+surface+'/scan.py'
@@ -30,10 +30,10 @@ def scanner(args):
             
             # Is this surface present?
             if not surface_scan.scan(html, args):
-                pinfo(" -> Surface not present on target")
+                #pinfo(" -> Surface not present on target")
                 continue
             else:
-                pwarn(" -> Surface present on target")
+                pwarn("Surface ("+surface+") present on target")
 
             for exploit in os.listdir("exploits/"+surface):
                 if exploit == '__pycache__' or exploit.startswith('scan.py'):
@@ -55,4 +55,12 @@ def scanner(args):
         perror("Target has a server error")
         perror("",r.status_code)
     
-    print(vulnerabilities)
+    if len(vulnerabilities) >= 1:
+        psuccess("=======================================")
+        psuccess("Your target is vulnerable")
+        for surface, exploit in vulnerabilities:
+            psuccess("try: hackwp --target " + args.target + " --attack " +surface+" --exploit " +exploit+ " --payload rce-test")
+
+    else:
+        perror("=======================================")
+        perror("Your target is _not_ vulnerable")
