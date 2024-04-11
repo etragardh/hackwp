@@ -6,6 +6,13 @@ def get_hackwp_dir():
 
 hackwp_dir = get_hackwp_dir() 
 
+# Check if payload is compatible with exploit
+# get_vuln is a list ['RCE', 'SQLi', 'CODEi', 'XSSs']
+# get_dep is also a list ['RCE', 'SQLi', 'CODEi', 'XSSs']
+# Atleast one needs to be a match
+def payload_is_compatible(exploit, payload):
+    return not set(exploit.get_vuln()).isdisjoint(payload.get_dep())
+
 
 # Cookie helpers
 def save_cookies(requests_cookiejar, domain):

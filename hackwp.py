@@ -75,8 +75,13 @@ parser.add_argument(
     '-e', '--exploit',
     help='exploit module'
 )
+parser.add_argument(
+    '-x', '--payload',
+    help='exploit module'
+)
+
 args = parser.parse_args()
-print(args)
+#print(args)
 
 ##
 # Create ~/.hackwp directory if not exists
@@ -106,13 +111,32 @@ if args.attack:
     if not args.exploit or not args.target or not args.payload:
         perror("--exploit is required")
         perror("--target is required")
-        perror("--payload is required")
+        perror("--payload is required") # smitka-browser
         exit()
     module  = args.attack
     exploit = args.exploit
-    exploit_path = './modules/'+module+'/'+exploit+'/main.py'
-    mod = SourceFileLoader("Attack Module",exploit_path).load_module()
-    mod.attack(args)
+    exploit_path = './exploits/'+module+'/'+exploit+'/main.py'
+    payload_path = './payloads/'+args.payload+'/main.py'
+    exploit = SourceFileLoader("Exploit Module",exploit_path).load_module()
+    payload = SourceFileLoader("Payload Module",payload_path).load_module()
+
+    if not payload_is_compatible(exploit, payload): 
+        perror("This payload is not available for this exploit")
+        pwarn("Exploit can handle:", exploit.get_vuln())
+        pwarn("The payload needs", payload.get_dep())
+        exit()
+
+    # Go
+    pinfo("===================================================")
+    pinfo("== HackWP") 
+    pinfo("== by @etragardh") 
+    pinfo("===================================================")
+    pinfo("== Attacking: "+args.target) 
+    pinfo("== Module: "+args.attack)
+    pinfo("== Exploit: "+args.exploit) 
+    pinfo("== Payload: "+args.payload)
+    pinfo("===================================================")
+    exploit.attack(args, payload)
     exit()
 
 ###

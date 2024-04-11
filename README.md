@@ -8,12 +8,22 @@ I will create both exploits and payloads as I see fit but it would be very much 
 ## Usage
 
 **Installation**
+
+This might be updated before final release to run without pyinstaller
 ```
 gh repo clone etragardh/hackwp
 cd hackwp
 pyinstaller hackwp.py
 ln -s dist/hackwp/hackwp.py /usr/local/bin/hackwp
 ```
+
+To something like this maybe?
+```
+gh repo clone etragardh/hackwp
+ln -s hackwp/hackwp.py /usr/local/bin/hackwp
+```
+
+
 
 **Help**
 ```
@@ -23,3 +33,6 @@ hackwp --help
 ## Responsibility and Liability
 This software is provided "as is" and is created for educational and testing purposes only. Do not use it for any illegal activities. I will not be held responsible for any harm caused by utilizing this tool in a way it was not meant to.
 
+
+## Support
+<p><a href="https://www.buymeacoffee.com/etragardh"> <img align="left" src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="etragardh" /></a></p>
