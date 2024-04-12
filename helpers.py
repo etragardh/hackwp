@@ -37,13 +37,13 @@ def payload_is_compatible(exploit, payload):
 
 
 # Cookie helpers
-def save_cookies(requests_cookiejar, domain):
-    with open(hackwp_dir+'/'+domain+'.session', 'wb') as f:
-        pickle.dump(requests_cookiejar, f)
+#def save_cookies(requests_cookiejar, domain):
+#    with open(hackwp_dir+'/'+domain+'.session', 'wb') as f:
+#        pickle.dump(requests_cookiejar, f)
 
-def load_cookies(domain):
-    with open(hackwp_dir+'/'+domain+'.session', 'rb') as f:
-        return pickle.load(f)
+#def load_cookies(domain):
+#    with open(hackwp_dir+'/'+domain+'.session', 'rb') as f:
+#        return pickle.load(f)
 
 ## Short "unique" ID
 def uid(n=8):

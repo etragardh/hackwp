@@ -1,107 +1,17 @@
 #!/usr/bin/env python3
 
-import argparse, os
-from session import *
+import os
+#from session import *
 from helpers import * 
-from scanner import * 
+from scanner import hwps 
 from importlib.machinery import SourceFileLoader
 
-# --attack wp           --exploit installation      (unathenticated)
-# --attack wp           --exploit dos               (unathenticated)
-# --attack wp           --exploit login-spray       (unathenticated)
-# --attack wp           --exploit user-list         (unathenticated)
-#-> --attack-bricks       --attack 1.9.6-rce          (unathenticated)
-# --attack-bricks       --attack 1.9.6.1-rce        (authenticated with builder edit + admin preview)
-# --attack-bricks       --attack 1.9.7-rce          (authenticated with admin + builder code exec)
-# --attack-breakdance   --attack 1.7.0-rce          (authenticated with builder edit)
-# --attack-oxygen       --attack 4.8.1-rce          (authenticated with builder edit)
-# --attack-cwicly       --attack 1.4.0.2-rce        (authenticated with contributor or above)
-# --attack-wordfence    --attack 7.6.1-2fa          (unathenticated + sql read)
-# --attack-layerslider  --attack 7.10.0-sqli        (unathenticated)
-# --session-extract     --wp-user --wp-password     ()
-#-> --session-auth                                    ()
-
-# new syntax:
-# hackwp --attack <module> --exploit <exploit> --payload <payload> --target <url> [--session-auth] [$1] [$2]
-# hackwp --session-extract --wp-user <username|email> --wp-passwd <password>
-# hackwp --scan --target <url>
-#   scan looks for:
-#   - wp users in /wp-json/wp/v2/users
-#       - user names
-#       - md5 hashes of emails
-#       - if md5 hashes / emails are already in database
-#       - if email is in have i been powned
-#   - installed plugins and their versions
-#   - installed themes and their versions
-#   - installed version of wp core
+from networking import hwpn
+from parser import hwp_parser as hwpp
 
 # Parse arguments
-parser = argparse.ArgumentParser(
-    prog='HackWP',
-    description='Utility to hack wordpress sites',
-    epilog="Don't hack shit without permission! help in blueteamer discord")
-
-parser.add_argument(
-    '-y', '--version',
-    action='store_true',
-    help='Display version'
-)
-parser.add_argument(
-    '-u', '--wp-user',
-    help='The WP user_login or user_email'
-)
-
-parser.add_argument(
-    '-p', '--wp-pass',
-    help='The WP password that belongs to --wp-user'
-)
-
-parser.add_argument(
-    '-s', '--session-extract',
-    action='store_true',
-    help=session_extract_help()
-)
-parser.add_argument(
-    '-z', '--scan',
-    action='store_true',
-    help="Scan the target for vulnerabilities exploitable by HackWP"
-)
-
-parser.add_argument(
-    '-v', '--verbose',
-    action='store_true',
-    help=session_extract_help()
-)
-
-parser.add_argument(
-    '-A', '--session-auth',
-    action='store_true',
-    help=session_auth_help()
-)
-
-parser.add_argument(
-    '-t', '--target',
-    help='The target url, full url like this: https://domain.com'
-)
-
-parser.add_argument(
-    '-a', '--attack',
-    help='attack module'
-)
-parser.add_argument(
-    '-e', '--exploit',
-    help='exploit module'
-)
-parser.add_argument(
-    '-x', '--payload',
-    help='exploit module'
-)
-parser.add_argument(
-    'pos', nargs='*'
-)
-
+parser = hwpp.create()
 args = parser.parse_args()
-#print(args)
 
 ##
 # Create ~/.hackwp directory if not exists
@@ -122,20 +32,15 @@ if args.target:
 ##
 # Extract sessions and exit
 if args.session_extract:
-    session_extract(args)
+    n = hwpn(args)
+    n.session_extract()
     exit()
-
-##
-# Print version and exit
-#if args.version:
-#    hwp_ascii()
-#    psuccess("Version:", get_version())
-#    exit()
 
 ##
 # Scan target and exit
 if args.scan:
-    scanner(args);
+    s = hwps(args)
+    s.scan();
     exit()
 
 ##
@@ -174,3 +79,7 @@ if args.attack:
 
 hwp_ascii()
 psuccess("Version:", get_version())
+
+r = hwpn(args)
+res = r.post(args.target, json={'testing':'test'})
+print(res.text)

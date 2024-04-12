@@ -9,19 +9,15 @@ I will create both exploits and payloads as I see fit but it would be very much 
 
 **Installation**
 
-This might be updated before final release to run without pyinstaller
 ```
 gh repo clone etragardh/hackwp
-cd hackwp
-pyinstaller hackwp.py
-ln -s dist/hackwp/hackwp.py /usr/local/bin/hackwp
+chmod +x hackwp/hackwp
+sudo ln -s ${PWD}/hackwp/hackwp /usr/local/bin
 ```
 
-To something like this maybe?
-```
-gh repo clone etragardh/hackwp
-ln -s hackwp/hackwp.py /usr/local/bin/hackwp
-```
+##Dependencies**
+TODO: Update list of deps
+TODO: Auto install deps with pip if available 
 
 ## Supported/tested platforms
 Im running MacOS, Kali and Parrot on my laptop.
