@@ -80,6 +80,6 @@ if args.attack:
 hwp_ascii()
 psuccess("Version:", get_version())
 
-r = hwpn(args)
-res = r.post(args.target, json={'testing':'test'})
-print(res.text)
+#r = hwpn(args)
+#res = r.post(args.target, json={'testing':'test'})
+#print(res.text)
