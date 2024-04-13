@@ -6,7 +6,8 @@ The main idea is to create a tool that combines the best from `wpscan` and `msf`
 I will create both exploits and payloads as I see fit but it would be very much appreciated if the community would help with that.
 
 >[!CAUTION]
->Don't grant access to HackWP to any untrusted users since it might cause severe harm to you website. Any user really could potentially get full admin access to your page.
+> Be careful when using HackWP
+> Any user really could potentially get full admin access to your website, server and other assets present on the same server.
 
 ## Usage
 
