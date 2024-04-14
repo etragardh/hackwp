@@ -19,7 +19,7 @@ chmod +x hackwp/hackwp
 sudo ln -s ${PWD}/hackwp/hackwp /usr/local/bin
 ```
 
-##Dependencies
+## Dependencies
 
 TODO: Update list of deps<br />
 TODO: Auto install deps with pip if available<br /> 
