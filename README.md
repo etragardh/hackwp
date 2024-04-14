@@ -6,7 +6,7 @@ The main idea is to create a tool that combines the best from `wpscan` and `msf`
 I will create both exploits and payloads as I see fit but it would be very much appreciated if the community would help with that.
 
 >[!CAUTION]
-> Be careful when using HackWP
+> Be careful when using HackWP.<br />
 > Any user really could potentially get full admin access to your website, server and other assets present on the same server.
 
 ## Usage
@@ -19,9 +19,9 @@ chmod +x hackwp/hackwp
 sudo ln -s ${PWD}/hackwp/hackwp /usr/local/bin
 ```
 
-##Dependencies**
-TODO: Update list of deps
-TODO: Auto install deps with pip if available 
+##Dependencies
+TODO: Update list of deps<br />
+TODO: Auto install deps with pip if available</br /> 
 
 ## Supported/tested platforms
 Im running MacOS, Kali and Parrot on my laptop.
