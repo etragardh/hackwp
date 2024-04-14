@@ -20,8 +20,9 @@ sudo ln -s ${PWD}/hackwp/hackwp /usr/local/bin
 ```
 
 ##Dependencies
+
 TODO: Update list of deps<br />
-TODO: Auto install deps with pip if available</br /> 
+TODO: Auto install deps with pip if available<br /> 
 
 ## Supported/tested platforms
 Im running MacOS, Kali and Parrot on my laptop.
