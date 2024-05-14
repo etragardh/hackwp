@@ -8,8 +8,12 @@ def get_version():
 def get_hackwp_dir():
     return os.path.expanduser('~/.hackwp')
 
+# Get real path to installation
+def get_realpath():
+    return os.path.dirname(os.path.realpath(__file__))
+
 hackwp_dir = get_hackwp_dir() 
-realpath = os.path.dirname(os.path.realpath(__file__))
+realpath = get_realpath() 
 
 ###
 # Run ASCII art

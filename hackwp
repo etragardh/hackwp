@@ -24,6 +24,9 @@ if not os.path.isdir(hackwp_dir):
     except OSError as error:
         perror(error)
 
+# Path to real installation, not symlink
+realpath = get_realpath()
+
 ##
 # Normalize --target
 if args.target:
@@ -53,8 +56,8 @@ if args.attack:
         exit()
     module  = args.attack
     exploit = args.exploit
-    exploit_path = './exploits/'+module+'/'+exploit+'/main.py'
-    payload_path = './payloads/'+args.payload+'/main.py'
+    exploit_path = realpath + '/exploits/'+module+'/'+exploit+'/main.py'
+    payload_path = realpath + '/payloads/'+args.payload+'/main.py'
     exploit = SourceFileLoader("Exploit Module",exploit_path).load_module()
     payload = SourceFileLoader("Payload Module",payload_path).load_module()
 
