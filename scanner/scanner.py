@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 from importlib.machinery import SourceFileLoader
+import time
 import requests, os
 from helpers import *
+from scanner.database import *
+
 
 class hwps:
 
     def __init__(self, args):
         self.args = args
+        self.html = ''
         self.core = {
             'version': ''
         }
@@ -19,10 +23,51 @@ class hwps:
         self.vulnerabilities = []
 
     def scan(self):
+
+        # Scanner
+
+        # Check: Database
+        # - last update of wordfence?
+        # - last update of patchstack? (live?)
+
+        last_db_update = get_db_last_update()
+        accepted_last_update = time.time() - 60*60*24*7 # 7 days
+
+        if last_db_update <= accepted_last_update:
+            # Do update
+            pwarn("Your database is old, we update it for you now..")
+            do_db_update()
+        else:
+            pwarn("Your database was updated recently..")
+
+        # Scan: WP Core
+        # - Version
+        
+
+        # Scan: Theme
+        # - slug
+        # - version
+
+        # Scan: Plugins
+        # - plugins installed or present
+        # - versions (scan for readme.txt, this file is required for plugins in the public wp repo)
+        # - wp is also recommending to move changelog to changelog.txt (but keep one most recent in readme.txt)
+
+        # Scan: Users
+        # - usernames
+        # - ID
+
+        # Scan: vulnerabilities
+        # - vulnerable according to wordfence
+        # - vulnerable according to patchstack
+        # - vulnerable according to exploits
+
+    ## Old "scan()"
+    def scan_plugins_old(self):
         args = self.args
 
         ##
-        # Get taget index html
+        # Get target index html
         try:
             r = requests.get(args.target)
         except(requests.exceptions.ConnectionError, requests.exceptions.Timeout):

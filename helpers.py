@@ -9,6 +9,7 @@ def get_hackwp_dir():
     return os.path.expanduser('~/.hackwp')
 
 hackwp_dir = get_hackwp_dir() 
+realpath = os.path.dirname(os.path.realpath(__file__))
 
 ###
 # Run ASCII art
@@ -25,7 +26,7 @@ def hwp_ascii(size='auto'):
         else:
             size = 'tiny'
 
-    with open('assets/owl.'+size+'.ascii', 'r') as f:
+    with open(realpath + '/assets/owl.'+size+'.ascii', 'r') as f:
         print(f.read())
 
 # Check if payload is compatible with exploit

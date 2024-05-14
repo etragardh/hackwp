@@ -3,7 +3,7 @@
 import os
 #from session import *
 from helpers import * 
-from scanner/scanner import hwps 
+from scanner.scanner import hwps 
 from importlib.machinery import SourceFileLoader
 
 from networking import hwpn
