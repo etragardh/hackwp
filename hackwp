@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os
+import os, re
 #from session import *
 from helpers import * 
 from scanner.scanner import hwps 
@@ -12,6 +12,7 @@ from parser import hwp_parser as hwpp
 # Parse arguments
 parser = hwpp.create()
 args = parser.parse_args()
+args.silent = False
 
 ##
 # Create ~/.hackwp directory if not exists
@@ -52,32 +53,47 @@ if args.attack:
     if not args.exploit or not args.target or not args.payload:
         perror("--exploit is required")
         perror("--target is required")
-        perror("--payload is required") # smitka-browser
+        perror("--payload is required")
         exit()
-    module  = args.attack
+    surface  = args.attack
     exploit = args.exploit
-    exploit_path = realpath + '/exploits/'+module+'/'+exploit+'/main.py'
+    exploit_path = realpath + '/exploits/'+surface+'/'+exploit+'/main.py'
     payload_path = realpath + '/payloads/'+args.payload+'/main.py'
     exploit = SourceFileLoader("Exploit Module",exploit_path).load_module()
     payload = SourceFileLoader("Payload Module",payload_path).load_module()
 
-    if not payload_is_compatible(exploit, payload): 
+    method = payload_is_compatible(exploit, payload) 
+    if not method:
         perror("This payload is not available for this exploit")
-        pwarn("Exploit can handle:", exploit.get_vuln())
-        pwarn("The payload needs", payload.get_dep())
+        pwarn("Exploit can handle:", exploit.get_methods())
+        pwarn("The payload needs", payload.get_methods())
         exit()
 
+    # Override automatic method
+    method = args.method if args.method else method
+
     # Go
-    pinfo("===================================================")
-    pinfo("== HackWP") 
-    pinfo("== by @etragardh") 
-    pinfo("===================================================")
-    pinfo("== Attacking: "+args.target) 
-    pinfo("== Surface: "+args.attack)
-    pinfo("== Exploit: "+args.exploit) 
-    pinfo("== Payload: "+args.payload)
-    pinfo("===================================================")
-    exploit.attack(args, payload)
+    # FIXME: This should be loaded dynamically
+    launch_message(exploit, payload, args)
+    instructions = payload.get_instructions(method, args)
+    iid = False
+    for instruction in instructions:
+        if method == 'RCE':
+            exploit.rce(instruction, args)
+        elif method == 'LFI':
+            exploit.lfi(instruction, args)
+        elif method == 'RFI':
+            exploit.rfi(instruction, args)
+        elif method == 'SQLe':
+            if iid:
+                instruction = re.sub('#iid#', iid, instruction)
+                iid = False
+            res = exploit.sqle(instruction, args)
+            if res['iid']:
+                iid = res['iid']
+
+        elif method == 'SQLr':
+            exploit.sqlr(instruction, args)
     exit()
 
 hwp_ascii()

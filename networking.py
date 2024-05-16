@@ -10,6 +10,7 @@ class hwpn:
         self.args = args
         self.hwpd = get_hackwp_dir()
         self.domain = urlparse(args.target).netloc
+        self.exceptions = requests.exceptions
   
     def get_session_path(self):
         return self.hwpd+'/'+self.domain+'.session'

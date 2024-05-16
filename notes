@@ -1,0 +1,23 @@
+exploit/templates/main.py           -> ready template
+payloads/templates/main.py          -> ready template
+
+exploit/bricks/1.9.6-rce/main.py    -> ready exploit
+payload/rce-test/main.py            -> ready payload
+
+re do, exploits:
+  bricks 1.9.6.1
+  breakdance all
+  oxygen all
+
+re do payloads:
+  all except rce-test
+
+
+write documentation
+  - look at template files
+
+write scanner
+  - remove scan.py ?
+
+
+unauthenticated vulnerabilities

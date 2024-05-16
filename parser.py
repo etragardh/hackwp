@@ -18,6 +18,11 @@ class hwp_parser:
             help='The WP user_login or user_email'
         )
         parser.add_argument(
+            '-m', '--method',
+            help='Force specific attack method. RCE|LFI|RFI|SQLe|SQLr' 
+        )
+
+        parser.add_argument(
             '-p', '--wp-pass',
             help='The WP password that belongs to --wp-user'
         )
@@ -25,6 +30,11 @@ class hwp_parser:
             '-s', '--session-extract',
             action='store_true',
             help="Extract session cookies (simulate stolen cookies/hijack session)"
+        )
+        parser.add_argument(
+            '-n', '--auth',
+            action='store_true',
+            help="Send credentials with this request (stolen cookies/hijack session)"
         )
         parser.add_argument(
             '-z', '--scan',
