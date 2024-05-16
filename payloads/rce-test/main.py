@@ -1,25 +1,10 @@
-import os
-
-#
-# RCE   Remote Code Execution
-# FILEi File Inclusion
-# SQLi  SQL Injection (write access)
-# SQLr  SQL Read access
-# XSSs  XSS Stored
-# XSSr  XSS Reflected
-
 ##
-# Dependency
-# What dependency does this payload have
-def get_dep():
-    return ['RCE']
+# HackWP needs to know what methods is required to use this
+def get_methods():
+    return ['RCE'] 
 
-##
-# Detonate payload
-# Return the code to execut
-# or the file path to be uploaded
-def detonate(vuln, args):
-    if vuln == 'RCE':
+def get_instructions(method, args):
+    if method == 'RCE':
         # If we have RCE. Return PHP code
         if args.pos:
             return args.pos
@@ -28,3 +13,12 @@ def detonate(vuln, args):
                 "<?php echo 'Testing RCE 1'; ?>",
                 "<?php echo 'Testing RCE 2'; ?>",
             ]
+##
+# Author of this payload
+def get_author():
+    return "@etragardh"
+
+##
+# Special thanks to:
+def get_thanks():
+    return False 
