@@ -43,6 +43,7 @@ if args.session_extract:
 ##
 # Scan target and exit
 if args.scan:
+    scan_message(args)
     s = hwps(args)
     s.scan();
     exit()

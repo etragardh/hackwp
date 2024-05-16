@@ -4,6 +4,8 @@ import time
 import requests, os
 from helpers import *
 from scanner.database import *
+from networking import hwpn
+from scanner.core import hwpsc
 
 
 class hwps:
@@ -23,7 +25,6 @@ class hwps:
         self.vulnerabilities = []
 
     def scan(self):
-
         # Scanner
 
         # Check: Database
@@ -36,13 +37,27 @@ class hwps:
         if last_db_update <= accepted_last_update:
             # Do update
             pwarn("Your database is old, we update it for you now..")
-            do_db_update()
-        else:
+            do_db_update(self.args)
+        elif self.args.verbose:
             pwarn("Your database was updated recently..")
+
+        # Get index html
+        req = hwpn(self.args)
+        resp = req.get(self.args.target)
+        if resp.status_code != 200:
+            perror("Could not connect to host")
+            perror("Status: ",resp.status_code)
+            exit()
+        html = resp.text
+        self.html = html
 
         # Scan: WP Core
         # - Version
+        core = hwpsc(html, self.args)
+        self.core['version'] = core.get_version()
         
+        pinfo("WP Core version:", self.core['version'])
+        exit()
 
         # Scan: Theme
         # - slug

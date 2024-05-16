@@ -26,15 +26,15 @@ class hwpn:
     def session_exists(self):
         return os.path.exists(self.get_session_path())
 
-    def get(self, url):
-        if self.session_exists():
+    def get(self, url, **args):
+        if self.session_exists() and self.args.verbose:
             pwarn("Attaching to session:",self.get_session_path())
 
         cookies = self.load_session(self.args.target) if self.session_exists() else {}
         return requests.get(url, cookies=cookies)
 
     def post(self, url, **args):
-        if self.session_exists():
+        if self.session_exists() and self.args.verbose:
             pwarn("Attaching to session:",self.get_session_path())
         
         cookies = self.load_session(self.args.target) if self.session_exists() else {}

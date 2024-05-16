@@ -9,8 +9,8 @@ re do, exploits:
   breakdance all
   oxygen all
 
-re do payloads:
-  all except rce-test
+#re do payloads:
+#  all except rce-test
 
 
 write documentation

@@ -1,4 +1,4 @@
-import pickle, os, base64, re
+import pickle, os, base64, re, json
 
 # HackWP Version
 def get_version():
@@ -55,6 +55,13 @@ def payload_is_compatible(exploit, payload):
     else:
         return False
 
+def scan_message(args):
+    hwp_ascii()
+    cols, rows = os.get_terminal_size()
+    print("#"*(cols-1))
+    print("## Scanning: " + args.target + " "*(cols-len(args.target)-17) + "##")
+    print("#"*(cols-1))
+
 def launch_message(exploit, payload, args):
     hwp_ascii()
     cols, rows = os.get_terminal_size()
@@ -105,3 +112,23 @@ def perror(text, obj=""):
 
 def psuccess(text, obj=""):
     print("["+GREEN+B+"+"+WHITE+BOFF+"] " + text,obj)
+
+##
+# Get file from local file system
+# Return json
+def file_get_json(filepath):
+    try:
+        with open(filepath, 'r') as f:
+            return json.load(f)
+    except: 
+        perror("Could not open file and load as json: ",filepath)
+
+##
+# Get file from local file system
+# Return string
+def get_file_contents(filepath):
+    try:
+        with open(filepath, 'r') as f:
+            return f.read()
+    except:
+        perror("Could not open file: ",filepath)
