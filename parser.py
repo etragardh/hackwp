@@ -42,6 +42,21 @@ class hwp_parser:
             help="Scan the target for vulnerabilities exploitable by HackWP"
         )
         parser.add_argument(
+            '--agressive',
+            action='store_true',
+            help="Agressive scanning might yield a lot of 404 in the victim log. That is something fail2ban might catch and ban"
+        )
+
+        parser.add_argument(
+            '--purge-cache',
+            action='store_true',
+            help="Delete all cache (that belongs to target domain) before HackWP starts"
+        )
+        parser.add_argument(
+            '--delay-req',
+            help="Aggressive scanning performs over 15 000 requests, you might want to delay them. Add delay in ms"
+        )
+        parser.add_argument(
             '-v', '--verbose',
             action='store_true',
         )

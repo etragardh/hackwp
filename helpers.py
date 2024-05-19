@@ -1,4 +1,6 @@
-import pickle, os, base64, re, json
+import pickle, os, base64, re, json, hashlib
+from urllib.parse import urlparse
+from packaging.version import Version
 
 # HackWP Version
 def get_version():
@@ -14,6 +16,27 @@ def get_realpath():
 
 hackwp_dir = get_hackwp_dir() 
 realpath = get_realpath() 
+
+def get_domain(url):
+    return urlparse(url).netloc
+
+def md5sum(string):
+    return hashlib.md5(string.encode("utf-8")).hexdigest()
+
+def is_valid_version(version):
+    if type(version) != str:
+        return False
+
+    # Dont accept string without .
+    if "." not in version:
+        return False
+
+    # Dont accept pure timestamps
+    if re.match('[0-9]{10}', version):
+        return False
+
+    # Check if version is valid and above or equal to 1.0
+    return Version(version) >= Version("1")
 
 ###
 # Run ASCII art

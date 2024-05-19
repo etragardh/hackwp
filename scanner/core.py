@@ -1,11 +1,10 @@
 from networking import hwpn
-from helpers import pinfo, pwarn, get_hackwp_dir, get_realpath, file_get_json
+from helpers import pinfo, pwarn, get_hackwp_dir, get_realpath, file_get_json, md5sum, get_domain
 import os, requests, hashlib
 from urllib.parse import urlparse
 class hwpsc:
 
-    def __init__(self, html, args):
-        self.html = html
+    def __init__(self, args):
         self.args = args
 
     ##
@@ -19,8 +18,6 @@ class hwpsc:
         versions = self.get_wp_core_versions()
         versions = list(versions)
         for i, version in enumerate(versions):
-            print("this:", i, version)
-            print("prior:", i+1, versions[i+1])
 
             # Fetch the changed files and checksums for this version
             checksums = self.get_wp_core_checksums(version, versions[i+1])
@@ -48,15 +45,15 @@ class hwpsc:
                     pass
                     #print("="*40)
                     #print("MISS", file)
-                    #print(" -> (file)", self.hash(file))
+                    #print(" -> (file)", md5sum(file))
 
                 #print(" -> (wp)", wp_signature)
                 #print(" -> (target)", target_signature)
 
-            print("Version check:", version)
-            print(" -> total", total)
-            print(" -> matches", matches)
-            print(" -> fails", total-matches)
+#            print("Version check:", version)
+#            print(" -> total", total)
+#            print(" -> matches", matches)
+#            print(" -> fails", total-matches)
 
             if total-matches <= 2 and total >= 3:
                 return version
@@ -64,12 +61,12 @@ class hwpsc:
             total = 0
             matches = 0
 
-        return "we dont know"
+        return False
 
     ##
     # Get target signature of specific file
     def get_target_signature(self, file):
-        domain = urlparse(self.args.target).netloc
+        domain = get_domain(self.args.target)
         cache_path = get_hackwp_dir() + '/' + domain + '.cache/'
         
         # Create cache path
@@ -77,13 +74,13 @@ class hwpsc:
             os.mkdir(cache_path)
 
         # Return from cache if exists (these files dont change)
-        if os.path.exists(cache_path + self.hash(file)):
-            size = os.path.getsize(cache_path + self.hash(file))
+        if os.path.exists(cache_path + md5sum(file)):
+            size = os.path.getsize(cache_path + md5sum(file))
             if int(size) >= 2000000:
                 # We cannot handle hashes for too large files
                 return False
-            with open(cache_path + self.hash(file), 'r') as r:
-                return self.hash(r.read())
+            with open(cache_path + md5sum(file), 'r') as r:
+                return md5sum(r.read())
 
         # Get file from remote
         n = hwpn(self.args)
@@ -93,7 +90,7 @@ class hwpsc:
                 return False
         
         # Save to cache
-        with open(cache_path + self.hash(file), 'wb') as f:
+        with open(cache_path + md5sum(file), 'wb') as f:
             for chunk in r.iter_content(chunk_size=4096):
                 # If you have chunk encoded response uncomment if
                 # and set chunk_size parameter to None.
@@ -103,18 +100,18 @@ class hwpsc:
 #        with n.get(self.args.target + '/' + file) as resp:
 #            if resp.status_code != 200:
 #                return False
-#            hash = self.hash(resp.text)
+#            hash = md5sum(resp.text)
 
         # Save hash to cache file
-#        with open(cache_path + self.hash(file), 'w+') as f:
+#        with open(cache_path + md5sum(file), 'w+') as f:
 #            f.write(hash)
 
-        size = os.path.getsize(cache_path + self.hash(file))
+        size = os.path.getsize(cache_path + md5sum(file))
         if int(size) >= 2000000:
             # We cannot handle hashes for too large files
             return False
-        with open(cache_path + self.hash(file), 'r') as r:
-            return self.hash(r.read()) # its already hashed
+        with open(cache_path + md5sum(file), 'r') as r:
+            return md5sum(r.read()) # its already hashed
 #        return hash
 
     ##
@@ -162,10 +159,6 @@ class hwpsc:
 
         return out
 
-    def hash(self, string):
-        hash = hashlib.md5(string.encode("utf-8")).hexdigest()
-        return hash
-
     ##
     # Download WP Core checksums for a specific version of WP Core
     def download_wp_core_checksums(self, version):
@@ -176,7 +169,7 @@ class hwpsc:
                 with open(path, 'w+') as f:
                     f.write(r.text)
 
-    def get_version_old(self):
+    def get_version_legacy(self):
         ## Not all of these are present in every installation
 
 

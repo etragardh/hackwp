@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, re
+import os, re, shutil
 #from session import *
 from helpers import * 
 from scanner.scanner import hwps 
@@ -41,11 +41,23 @@ if args.session_extract:
     exit()
 
 ##
+# Purge Cache
+
+if args.purge_cache:
+    domain = get_domain(args.target)
+    cache_dir = get_hackwp_dir() + "/" + domain + ".cache/"
+    shutil.rmtree(cache_dir)
+
+##
 # Scan target and exit
 if args.scan:
     scan_message(args)
     s = hwps(args)
-    s.scan();
+    try:
+        s.scan();
+    except KeyboardInterrupt:
+        print("Stopping")
+        exit()
     exit()
 
 ##

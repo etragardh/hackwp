@@ -6,7 +6,8 @@ from helpers import *
 from scanner.database import *
 from networking import hwpn
 from scanner.core import hwpsc
-
+from scanner.theme import hwpst
+from scanner.plugins import hwpsp
 
 class hwps:
 
@@ -42,32 +43,50 @@ class hwps:
             pwarn("Your database was updated recently..")
 
         # Get index html
-        req = hwpn(self.args)
-        resp = req.get(self.args.target)
-        if resp.status_code != 200:
-            perror("Could not connect to host")
-            perror("Status: ",resp.status_code)
-            exit()
-        html = resp.text
-        self.html = html
+#        req = hwpn(self.args)
+#        resp = req.get(self.args.target)
+#        if resp and resp.status_code != 200:
+#            perror("Could not connect to host")
+#            perror("Status: ",resp.status_code)
+#            exit()
+#        html = resp.text
+#        self.html = html
 
         # Scan: WP Core
         # - Version
-        core = hwpsc(html, self.args)
+        core = hwpsc(self.args)
         self.core['version'] = core.get_version()
-        
-        pinfo("WP Core version:", self.core['version'])
-        exit()
+
+        msg = self.core['version'] if self.core['version'] else 'unknown'
+        pinfo("WP Core version:", msg) 
 
         # Scan: Theme
         # - slug
         # - version
+        theme = hwpst(self.args)
+        self.theme['version'] = theme.get_version()
+        self.theme['slug'] = theme.get_slug()
 
+        msg = self.theme['slug'] if self.theme['slug'] else 'unknown'
+        pinfo("WP Theme:", msg) 
+
+        msg = self.theme['version'] if self.theme['version'] else 'unknown'
+        pinfo("WP Theme Ver:", msg) 
+        
         # Scan: Plugins
         # - plugins installed or present
         # - versions (scan for readme.txt, this file is required for plugins in the public wp repo)
         # - wp is also recommending to move changelog to changelog.txt (but keep one most recent in readme.txt)
 
+        plugins = hwpsp(self.args, self.core['version'])
+        self.plugins = plugins.get_plugins()
+
+
+        for slug in self.plugins:
+            version = self.plugins[slug] if self.plugins[slug] is not False else "Unknown"
+            pwarn(f"Found plugin: {slug} (v: {version})")
+
+        exit()
         # Scan: Users
         # - usernames
         # - ID

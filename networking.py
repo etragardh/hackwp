@@ -31,7 +31,13 @@ class hwpn:
             pwarn("Attaching to session:",self.get_session_path())
 
         cookies = self.load_session(self.args.target) if self.session_exists() else {}
-        return requests.get(url, cookies=cookies)
+        try:
+            resp = requests.get(url, cookies=cookies)
+        except:
+            print("Req failed, unknown error")
+            resp = False
+
+        return resp
 
     def post(self, url, **args):
         if self.session_exists() and self.args.verbose:
@@ -42,7 +48,16 @@ class hwpn:
         files = args['files'] if 'files' in args else {}
         data = args['data'] if 'data' in args else {}
         headers = args['headers'] if 'headers' in args else {}
-        return requests.post(url, cookies=cookies, json=json, files=files, data=data)
+        try:
+            resp = requests.post(url, cookies=cookies, json=json, files=files, data=data)
+        except:
+            resp = False
+
+        if resp:
+            return resp
+        else:
+            return False
+
 
     def session_extract(self):
         args = self.args
