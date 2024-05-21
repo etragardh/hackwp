@@ -1,11 +1,16 @@
 from networking import hwpn
-from helpers import pinfo, pwarn, get_hackwp_dir, get_realpath, file_get_json, md5sum, get_domain
+from helpers import * 
 import os, requests, hashlib
 from urllib.parse import urlparse
+from scanner.crawler import hwpc
+from debug import hwpd
 class hwpsc:
 
     def __init__(self, args):
         self.args = args
+        self.d = hwpd(args.debug)
+        self.crawler = hwpc(args)
+        self.findings = []
 
     ##
     # HackWP needs to know what version of WP Core
@@ -14,7 +19,130 @@ class hwpsc:
     # get all checksums for 2nd to latest
     # get all checksums in latest, that are different
     # if there is just one single match, we know it is a HIT
+
+    def add_finding(self, matches):
+        if matches is False:
+            self.d.msg('Matches arr are False')
+            return
+        for match in matches:
+            if is_valid_version(match):
+                self.d.msg('Add finding:', match)
+                self.findings.append(match)
+            else:
+                self.d.msg('Reject finding:', match)
+
     def get_version(self):
+        ##
+        # generator on index
+        self.d.msg("WPCV on /")
+        pattern = 'generator.*WordPress ([1-9]\.[0-9](\.[0-9])?)'
+        matches = self.crawler.rfetch(self.args.target + \
+                '/', pattern, 1)
+        self.add_finding(matches)
+        
+        ##
+        # generator on /feed
+        self.d.msg("WPCV on /feed")
+        pattern = 'generator.*wordpress.*v=([1-9]\.[0-9](\.[0-9])?)'
+        matches = self.crawler.rfetch(self.args.target + \
+                '/feed', pattern, 1)
+        self.add_finding(matches)
+        
+        ##
+        # generator on /feed/rss
+        self.d.msg("WPCV on /feed/rss")
+        pattern = 'generator.*wordpress.*v=([1-9]\.[0-9](\.[0-9])?)'
+        matches = self.crawler.rfetch(self.args.target + \
+                '/feed/rss', pattern, 1)
+        self.add_finding(matches)
+        
+        ##
+        # generator on /?feed=rss
+        self.d.msg("WPCV on /?feed=rss")
+        pattern = 'generator.*wordpress.*v=([1-9]\.[0-9](\.[0-9])?)'
+        matches = self.crawler.rfetch(self.args.target + \
+                '/?feed=rss', pattern, 1)
+        self.add_finding(matches)
+
+        ##
+        # generator on /feed/rdf
+        self.d.msg("WPCV on /feed/rdf")
+        pattern = 'generator.*wordpress.*v=([1-9]\.[0-9](\.[0-9])?)'
+        matches = self.crawler.rfetch(self.args.target + \
+                '/feed/rdf', pattern, 1)
+        self.add_finding(matches)
+        
+        ##
+        # generator on /?feed=rdf
+        self.d.msg("WPCV on /?feed=rdf")
+        pattern = 'generator.*wordpress.*v=([1-9]\.[0-9](\.[0-9])?)'
+        matches = self.crawler.rfetch(self.args.target + \
+                '/?feed=rdf', pattern, 1)
+        self.add_finding(matches)
+
+        ##
+        # generator on /feed/atom
+        self.d.msg("WPCV on /feed/atom")
+        pattern = 'generator.*wordpress.*version="([1-9]\.[0-9](\.[0-9])?)'
+        matches = self.crawler.rfetch(self.args.target + \
+                '/feed/atom', pattern, 1)
+        self.add_finding(matches)
+
+        ##
+        # generator on /?feed=atom
+        self.d.msg("WPCV on /?feed=atom")
+        pattern = 'generator.*wordpress.*version="([1-9]\.[0-9](\.[0-9])?)'
+        matches = self.crawler.rfetch(self.args.target + \
+                '/?feed=atom', pattern, 1)
+        self.add_finding(matches)
+
+        ##
+        # css on /wp-admin/install.php
+        self.d.msg("WPCV on /wp-admin/install.php")
+        pattern = '-css.*wp-[includes|admin].*ver=([1-9]\.[0-9](\.[0-9])?)'
+        matches = self.crawler.rfetch(self.args.target + \
+                '/wp-admin/install.php', pattern, 1)
+        self.add_finding(matches)
+
+        ##
+        # css on /wp-login.php
+        self.d.msg("WPCV on /wp-login.php")
+        #pattern = '-css.*wp-includes.*ver=([1-9]\.[0-9](\.[0-9])?)'
+        pattern = 'wp-[includes|admin].*ver=([1-9]\.[0-9](\.[0-9])?)'
+        matches = self.crawler.rfetch(self.args.target + \
+                '/wp-login.php', pattern, 1)
+        self.add_finding(matches)
+
+        ##
+        # css on 404
+        a = uid()
+        b = uid()
+        self.d.msg(f"WPCV on 404 (/{a}/{b}/)")
+        #pattern = '-css.*wp-includes.*ver=([1-9]\.[0-9](\.[0-9])?)'
+        pattern = '-css.*wp-[includes|admin].*ver=([1-9]\.[0-9](\.[0-9])?)'
+        matches = self.crawler.rfetch(self.args.target + \
+                f'/{a}/{b}/', pattern, 1)
+        self.add_finding(matches)
+
+
+        best_guess = most_frequent(self.findings)
+        if is_valid_version(best_guess):
+            return best_guess
+
+        # If best guess is not a valid version
+        # AND agressive is turned on
+        # We scan for signatures
+
+        if self.args.agressive:
+            best_guess = self.signature_scan()
+        
+        if is_valid_version(best_guess):
+            return best_guess
+        else:
+            return False
+
+    def signature_scan():
+        self.d.msg("WP Version signature scan")
         versions = self.get_wp_core_versions()
         versions = list(versions)
         for i, version in enumerate(versions):
@@ -28,6 +156,9 @@ class hwpsc:
 
                 # Only keep files that we can access remote
                 if ".css" not in file and ".js" not in file:
+                    continue
+
+                if ".json" in file:
                     continue
 
                 wp_signature = checksums[file]
@@ -50,14 +181,15 @@ class hwpsc:
                 #print(" -> (wp)", wp_signature)
                 #print(" -> (target)", target_signature)
 
-#            print("Version check:", version)
-#            print(" -> total", total)
-#            print(" -> matches", matches)
-#            print(" -> fails", total-matches)
+            self.d.msg("Version check:", version)
+            self.d.msg(" -> total", total)
+            self.d.msg(" -> matches", matches)
+            self.d.msg(" -> fails", total-matches)
 
             if total-matches <= 2 and total >= 3:
                 return version
 
+            # Reset counter for next iteration/version
             total = 0
             matches = 0
 
@@ -66,18 +198,21 @@ class hwpsc:
     ##
     # Get target signature of specific file
     def get_target_signature(self, file):
+        #self.d.msg("get signature for file:", file)
         domain = get_domain(self.args.target)
         cache_path = get_hackwp_dir() + '/' + domain + '.cache/'
         
         # Create cache path
-        if not os.path.exists(cache_path):
-            os.mkdir(cache_path)
+        #if not os.path.exists(cache_path):
+        #    self.d.msg("cache_patch created")
+        #    os.mkdir(cache_path)
 
         # Return from cache if exists (these files dont change)
         if os.path.exists(cache_path + md5sum(file)):
             size = os.path.getsize(cache_path + md5sum(file))
             if int(size) >= 2000000:
                 # We cannot handle hashes for too large files
+                self.d.msg("size > 2000000:", file)
                 return False
             with open(cache_path + md5sum(file), 'r') as r:
                 return md5sum(r.read())
@@ -87,6 +222,7 @@ class hwpsc:
         with n.get(self.args.target + '/' + file, stream=True) as r:
             #r.raise_for_status()
             if r.status_code != 200:
+                self.d.msg(f"Status ({r.status_code}):", file)
                 return False
         
         # Save to cache

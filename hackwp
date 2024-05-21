@@ -5,6 +5,7 @@ import os, re, shutil
 from helpers import * 
 from scanner.scanner import hwps 
 from importlib.machinery import SourceFileLoader
+from debug import hwpd
 
 from networking import hwpn
 from parser import hwp_parser as hwpp
@@ -13,6 +14,12 @@ from parser import hwp_parser as hwpp
 parser = hwpp.create()
 args = parser.parse_args()
 args.silent = False
+
+##
+# Debugger
+d = hwpd(args.debug)
+d.msg("Debugger started", args)
+args.verbose = True
 
 ##
 # Create ~/.hackwp directory if not exists
@@ -35,22 +42,33 @@ if args.target:
 
 ##
 # Extract sessions and exit
-if args.session_extract:
+if args.auth_extraction:
+    d.msg("Auth extraction")
     n = hwpn(args)
-    n.session_extract()
+    n.extract_auth()
     exit()
 
 ##
 # Purge Cache
 
 if args.purge_cache:
+    d.msg("Cache is purged")
     domain = get_domain(args.target)
     cache_dir = get_hackwp_dir() + "/" + domain + ".cache/"
-    shutil.rmtree(cache_dir)
+    if os.path.isdir(cache_dir):
+        shutil.rmtree(cache_dir)
+
+##
+# Spoofer
+if args.spoof:
+    d.msg("IP & UA spoof is ON")
+    args.spoof_ip = True
+    args.spoof_ua = True
 
 ##
 # Scan target and exit
 if args.scan:
+    d.msg("Starting scanner")
     scan_message(args)
     s = hwps(args)
     try:

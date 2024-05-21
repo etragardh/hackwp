@@ -8,12 +8,16 @@ from networking import hwpn
 from scanner.core import hwpsc
 from scanner.theme import hwpst
 from scanner.plugins import hwpsp
+from scanner.users import hwpsu
+from scanner.vuln import hwpv
+from scanner.exploits import hwpe
+from debug import hwpd
 
 class hwps:
 
     def __init__(self, args):
         self.args = args
-        self.html = ''
+        self.d = hwpd(args.debug)
         self.core = {
             'version': ''
         }
@@ -21,8 +25,8 @@ class hwps:
             'slug': '',
             'version': ''
         }
+        self.plugins = {} 
         self.users = []
-        self.plugins = []
         self.vulnerabilities = []
 
     def scan(self):
@@ -40,29 +44,29 @@ class hwps:
             pwarn("Your database is old, we update it for you now..")
             do_db_update(self.args)
         elif self.args.verbose:
-            pwarn("Your database was updated recently..")
+            pinfo("Your database was updated recently..")
 
-        # Get index html
-#        req = hwpn(self.args)
-#        resp = req.get(self.args.target)
-#        if resp and resp.status_code != 200:
-#            perror("Could not connect to host")
-#            perror("Status: ",resp.status_code)
-#            exit()
-#        html = resp.text
-#        self.html = html
+        # Vulnerability handler
+        vuln = hwpv(self.args)
 
         # Scan: WP Core
         # - Version
+        self.d.msg("Start scan of core")
         core = hwpsc(self.args)
         self.core['version'] = core.get_version()
 
         msg = self.core['version'] if self.core['version'] else 'unknown'
-        pinfo("WP Core version:", msg) 
+        pinfo("WP Core version:", msg)
+
+        # Output if it is vulnerable
+        vuln.core(self.core['version'])
+
+        pinfo("")
 
         # Scan: Theme
         # - slug
         # - version
+        self.d.msg("Start scan of theme")
         theme = hwpst(self.args)
         self.theme['version'] = theme.get_version()
         self.theme['slug'] = theme.get_slug()
@@ -73,24 +77,61 @@ class hwps:
         msg = self.theme['version'] if self.theme['version'] else 'unknown'
         pinfo("WP Theme Ver:", msg) 
         
+        # Output if it is vulnerable
+        vuln.theme(self.theme['slug'], self.theme['version'])
+        
+        pinfo("")
         # Scan: Plugins
         # - plugins installed or present
-        # - versions (scan for readme.txt, this file is required for plugins in the public wp repo)
-        # - wp is also recommending to move changelog to changelog.txt (but keep one most recent in readme.txt)
 
+        pinfo("Enumarate plugins")
+        pinfo(" -> This might take a while")
         plugins = hwpsp(self.args, self.core['version'])
         self.plugins = plugins.get_plugins()
 
-
         for slug in self.plugins:
             version = self.plugins[slug] if self.plugins[slug] is not False else "Unknown"
-            pwarn(f"Found plugin: {slug} (v: {version})")
+            pinfo("")
+            pinfo(f"Found plugin: {slug} (v: {version})")
 
-        exit()
+            # Output if it is vulnerable
+            vuln.plugin(slug, self.plugins[slug])
+        pinfo("")
+
         # Scan: Users
         # - usernames
         # - ID
 
+        pinfo("Enumerate users")
+        pinfo(" -> This might take a while")
+        users = hwpsu(self.args)
+        self.users = users.get_users()
+
+        for user in self.users:
+            pwarn("Found user:", user)
+        
+        #TODO: scan for emails
+
+
+        # What exploits do we have on FS that is a match?
+        exploits = hwpe(self.args, self.core, self.theme, self.plugins)
+        exps = exploits.scan()
+
+        pinfo("")
+        if len(exps) >= 1:
+            perror("Website is vulnerable to the following HackWP exploits")
+            for exp in exps:
+                perror(f"-> {exp['surface']}/{exp['exploit']} (by {exp['author']})")
+                pwarn(f" - methods: {exp['methods']}")
+                pwarn(f" - auth: {exp['auth']}")
+                exploits.next_move(exp['surface'], exp['exploit'], exp['methods'], exp['auth'])
+                pinfo("")
+
+        else:
+            pinfo("HackWP has no exploits working for this website")
+            pinfo("You can create one and send a pull request to git")
+
+        exit()
         # Scan: vulnerabilities
         # - vulnerable according to wordfence
         # - vulnerable according to patchstack

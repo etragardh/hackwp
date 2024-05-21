@@ -1,6 +1,7 @@
 from helpers import md5sum, get_domain, get_hackwp_dir
 from networking import hwpn
 import os, json, re, time
+from debug import hwpd
 
 
 class respObj:
@@ -8,7 +9,6 @@ class respObj:
         self.url            = json_object['url']
         self.status_code    = json_object['status_code']
         self.text           = json_object['text']
-
 
 # Use case
 
@@ -33,6 +33,7 @@ class hwpc:
         self.args = args
         self.n = hwpn(args)
         self.domain = get_domain(args.target)
+        self.d = hwpd(args.debug)
 
     # Crwal entire website, all pages
     def crawl(self, url, pattern, group=False, crawled=[], exclude=True):
@@ -44,6 +45,7 @@ class hwpc:
 
         # Dont crawl the same url twice
         if md5sum(url) in crawled:
+ #           print("exists", url, md5sum(url), crawled)
             return False
 
         # Regex for urls to exclude from crawling
@@ -68,6 +70,8 @@ class hwpc:
             for match in matches:
                 m1.append(match[group-1])
             matches = m1
+        if matches:
+            self.d.msg("Crawl MATCH:", matches)
 
         # Find more URLs present on this page
         # Only URLs starting with target
@@ -78,7 +82,8 @@ class hwpc:
             matches = matches + m2 if m2 else matches
 
         # Return unique only
-        return list(dict.fromkeys(matches))
+        #return list(dict.fromkeys(matches))
+        return matches
 
     # Wrapper for networking.get()
     # With cache handler
@@ -91,6 +96,7 @@ class hwpc:
         # Check for cache
         if cache and os.path.exists(cache_path):
 #            print("cache: ", url)
+            self.d.msg("C:",url)
             with open(cache_path, 'r') as f:
                 return respObj(json.load(f))
 
@@ -98,6 +104,7 @@ class hwpc:
 #            print("live: ", url)
             time.sleep(.025)
             resp = self.n.get(url)
+            self.d.msg(f"L: ({resp.status_code})",url)
             if resp is False:
                 return False
 
@@ -114,17 +121,23 @@ class hwpc:
 
     # Wrapper for fetch()
     # Handles regex grep
-    def rfetch(self, url=False, pattern=False, group=1, cache=True):
+    def rfetch(self, url=False, pattern=False, group=False, cache=True):
         if not url or not pattern:
             perror("Missing req param in rfetch()")
 
         resp = self.fetch(url, cache)
-        if not resp.text:
+        if resp is False:
             return False
 
-        match = re.search(pattern, resp.text, re.IGNORECASE)
-        if match:
-            return match.group(group)
+        matches = re.findall(pattern, resp.text, re.IGNORECASE)
+        if group is not False:
+            m1 = []
+            for match in matches:
+                m1.append(match[group-1])
+            matches = m1
+    
+        if matches:
+            return matches
         else:
             return False
 

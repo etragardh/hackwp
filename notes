@@ -2,22 +2,15 @@ exploit/templates/main.py           -> ready template
 payloads/templates/main.py          -> ready template
 
 exploit/bricks/1.9.6-rce/main.py    -> ready exploit
-payload/rce-test/main.py            -> ready payload
+payload/test-rce/main.py            -> ready payload
 
-re do, exploits:
-  bricks 1.9.6.1
-  breakdance all
-  oxygen all
+!OBS! Exploits!
+ - can exploit RFI from relative paths of the payload?
+ - does exploit even know about the payload?
+ - or does payload need to send abs path?
 
-#re do payloads:
-#  all except rce-test
-
+Create Exploits
+-> unauthenticated vulnerabilities
 
 write documentation
   - look at template files
-
-write scanner
-  - remove scan.py ?
-
-
-unauthenticated vulnerabilities

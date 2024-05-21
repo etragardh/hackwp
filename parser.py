@@ -14,6 +14,12 @@ class hwp_parser:
             help='Display version'
         )
         parser.add_argument(
+            '--debug',
+            action='store_true',
+            help='View Debug log'
+        )
+
+        parser.add_argument(
             '-u', '--wp-user',
             help='The WP user_login or user_email'
         )
@@ -27,7 +33,7 @@ class hwp_parser:
             help='The WP password that belongs to --wp-user'
         )
         parser.add_argument(
-            '-s', '--session-extract',
+            '-s', '--auth-extraction',
             action='store_true',
             help="Extract session cookies (simulate stolen cookies/hijack session)"
         )
@@ -35,6 +41,21 @@ class hwp_parser:
             '-n', '--auth',
             action='store_true',
             help="Send credentials with this request (stolen cookies/hijack session)"
+        )
+        parser.add_argument(
+            '--spoof',
+            action='store_true',
+            help="Spoof a new IP _and_ a new User Agent with every request"
+        )
+        parser.add_argument(
+            '--spoof-ip',
+            action='store_true',
+            help="Spoof a new IP with every request"
+        )
+        parser.add_argument(
+            '--spoof-ua',
+            action='store_true',
+            help="Spoof a new User Agent with every request"
         )
         parser.add_argument(
             '-z', '--scan',

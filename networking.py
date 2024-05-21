@@ -1,6 +1,7 @@
-import requests, os, pickle, sys
+import requests, os, pickle, sys, random
 from helpers import *
 from urllib.parse import urlparse
+from debug import hwpd
 
 class hwpn:
     """This is HackWP Networking class"""
@@ -11,6 +12,13 @@ class hwpn:
         self.hwpd = get_hackwp_dir()
         self.domain = urlparse(args.target).netloc
         self.exceptions = requests.exceptions
+        self.d = hwpd(args.debug)
+
+        domain = get_domain(args.target)
+        cache_path = get_hackwp_dir() + '/' + domain + '.cache/'
+        if not os.path.exists(cache_path):
+            self.d.msg("cache_patch created")
+            os.mkdir(cache_path)
   
     def get_session_path(self):
         return self.hwpd+'/'+self.domain+'.session'
@@ -26,40 +34,125 @@ class hwpn:
     def session_exists(self):
         return os.path.exists(self.get_session_path())
 
+    def get_spoofed_header(self, headers, ip=False, ua=False):
+        if ip is True:
+            a = random.randint(1,254)
+            b = random.randint(1,254)
+            c = random.randint(1,254)
+            d = random.randint(1,254)
+            spoofed_ip = f'{a}.{b}.{c}.{d}'
+            headers = {
+                **headers,
+                'HTTP_CF_CONNECTING_IP': spoofed_ip,
+                'HTTP_CLIENT_IP': spoofed_ip,
+                'HTTP_X_FORWARDED_FOR': spoofed_ip,
+                'HTTP_X_FORWARDED': spoofed_ip,
+                'HTTP_X_REAL_IP': spoofed_ip
+            }
+        if ua is True:
+            with open(get_realpath() + '/user-agents.txt', 'r') as f:
+                user_agents = f.readlines()
+
+            rnd = random.randint(0, len(user_agents)-1)
+            spoofed_ua = user_agents[rnd].strip()
+
+            headers = {
+                **headers,
+                'User-Agent': spoofed_ua
+            }
+        else:
+            headers = {
+                **headers,
+                'User-Agent': 'HackWP/' + get_version()
+            }
+        return headers
+
+
     def get(self, url, **args):
-        if self.session_exists() and self.args.verbose:
+
+        ##
+        # Attach to session if possible
+        if self.args.auth and self.session_exists() and self.args.verbose:
             pwarn("Attaching to session:",self.get_session_path())
 
-        cookies = self.load_session(self.args.target) if self.session_exists() else {}
+            cookies = self.load_session(self.args.target) \
+                if self.session_exists() else {}
+
+        else: 
+            cookies = args['cookies'] if 'cookies' in args else {}
+
+        ##
+        # Spoof IP
+        headers = args['headers'] if 'headers' in args else {}
+        headers = self.get_spoofed_header(headers, self.args.spoof_ip, self.args.spoof_ua)
+
+        #headers = {**headers, 'User-Agent':'HackWP/'+get_version()}
+
+        ##
+        # Connect
         try:
-            resp = requests.get(url, cookies=cookies)
-        except:
-            print("Req failed, unknown error")
+            resp = requests.get(url, cookies=cookies, headers=headers)
+            #resp = requests.get(url) 
+        except requests.exceptions.Timeout as e:
+            # Maybe set up for a retry, or continue in a retry loop
+            raise SystemExit(e)
+            resp = False
+        except requests.exceptions.TooManyRedirects as e:
+            # Tell the user their URL was bad and try a different one
+            raise SystemExit(e)
+            resp = False
+        except requests.exceptions.RequestException as e:
+            # catastrophic error. bail.
+            raise SystemExit(e)
             resp = False
 
         return resp
 
     def post(self, url, **args):
-        if self.session_exists() and self.args.verbose:
+        if self.args.auth and self.session_exists() and self.args.verbose:
             pwarn("Attaching to session:",self.get_session_path())
         
-        cookies = self.load_session(self.args.target) if self.session_exists() else {}
+            cookies = self.load_session(self.args.target) \
+                if self.session_exists() else {}
+
+        else:
+            cookies = args['cookies'] if 'cookies' in args else {}
+
+        ##
+        # Prepare data
         json = args['json'] if 'json' in args else {}
         files = args['files'] if 'files' in args else {}
         data = args['data'] if 'data' in args else {}
         headers = args['headers'] if 'headers' in args else {}
+
+        ##
+        # Spoof IP
+        headers = self.get_spoofed_header(headers, self.args.spoof_ip, self.args.spoof_ua)
+        #headers = {**headers, 'User-Agent':'HackWP/'+get_version()}
+
+        ##
+        # Connect
         try:
-            resp = requests.post(url, cookies=cookies, json=json, files=files, data=data)
-        except:
+            resp = requests.post( \
+                    url, cookies=cookies, json=json, \
+                    files=files, data=data, headers=headers \
+            )
+        except requests.exceptions.Timeout as e:
+            # Maybe set up for a retry, or continue in a retry loop
+            raise SystemExit(e)
+            resp = False
+        except requests.exceptions.TooManyRedirects as e:
+            # Tell the user their URL was bad and try a different one
+            raise SystemExit(e)
+            resp = False
+        except requests.exceptions.RequestException as e:
+            # catastrophic error. bail.
+            raise SystemExit(e)
             resp = False
 
-        if resp:
-            return resp
-        else:
-            return False
+        return resp
 
-
-    def session_extract(self):
+    def extract_auth(self):
         args = self.args
         ## Argument check
         if not args.target or not args.wp_user or not args.wp_pass:

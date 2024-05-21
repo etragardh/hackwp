@@ -8,13 +8,14 @@ def get_methods():
 
 ##
 # Detonate payload
-# Return the code to execut
+# Return the code to execute
 # or the file path to be uploaded
 def get_instructions(method, args):
     if method == 'RFI':
         # If we have Remote File inclusion
         # Return the file path of mfb.php
-        return [os.path.dirname(os.path.realpath(__file__)) + '/mfb.php']
+        #return [os.path.dirname(os.path.realpath(__file__)) + '/mfb.php']
+        return ['/mfb.php']
 
 ##
 # Author of this payload
@@ -24,4 +25,4 @@ def get_author():
 ##
 # Special thanks to:
 def get_thanks():
-    return "@Smitka"
+    return "@smitka"

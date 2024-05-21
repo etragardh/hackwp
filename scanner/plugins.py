@@ -1,15 +1,17 @@
 from networking import hwpn
-from helpers import pinfo, pwarn, get_domain, get_hackwp_dir, get_realpath, file_get_json, is_valid_version
+from helpers import * 
 import re, json, os#, requests, hashlib
 #from urllib.parse import urlparse
 #from packaging.version import Version
 from scanner.crawler import hwpc
+from debug import hwpd
 class hwpsp:
 
     def __init__(self, args, core_version = False):
         self.args = args
         self.crawler = hwpc(args)
         self.core_version = core_version
+        self.d = hwpd(args.debug)
 
     # Return:
     # {
@@ -24,8 +26,8 @@ class hwpsp:
 
         # Step 2 - Agressive scanning
         if self.args.agressive:
-            pwarn("Starting agressiv scan of plugins")
-            pwarn(" - > This might take a while")
+            pinfo("Starting agressiv scan of plugins")
+            pinfo(" - > This might take a while")
             other_plugins = self.get_other_plugins(plugins)
     
             # Merge
@@ -36,7 +38,7 @@ class hwpsp:
     def get_crawled_plugins(self):
         pattern = 'wp-content\/plugins\/(.*?)\/'
         slugs = self.crawler.crawl(self.args.target, pattern)
-#        print(slugs)
+#        print("crawl plugins:",slugs)
 
         plugins = {}
         for slug in slugs:
@@ -125,7 +127,8 @@ class hwpsp:
 
         if valid_versions:
             # Return the most frequent
-            return max(set(valid_versions), key = valid_versions.count)
+            return most_frequent(valid_versions)
+#            return max(set(valid_versions), key = valid_versions.count)
 
         #
         # Method 4 - cryptografic checksums

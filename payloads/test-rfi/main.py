@@ -1,0 +1,29 @@
+import os
+
+##
+# Dependency
+# What dependency does this payload have
+def get_methods():
+    return ['RFI']
+
+##
+# Detonate payload
+# Return the code to execute
+# or the file path to be uploaded
+def get_instructions(method, args):
+    if method == 'RFI':
+        # If we have LFI
+        if args.pos:
+            return args.pos
+        else:
+            return [ "mfb.php" ]
+##
+# Author of this payload
+def get_author():
+    return "@etragardh"
+
+##
+# Special thanks to:
+def get_thanks():
+    return "@smitka" 
+

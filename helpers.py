@@ -4,7 +4,7 @@ from packaging.version import Version
 
 # HackWP Version
 def get_version():
-    return "0.1-beta"
+    return "0.1-alpha"
 
 # HackWP directory
 def get_hackwp_dir():
@@ -23,6 +23,9 @@ def get_domain(url):
 def md5sum(string):
     return hashlib.md5(string.encode("utf-8")).hexdigest()
 
+def most_frequent(arr):
+    return max(set(arr), key = arr.count)
+
 def is_valid_version(version):
     if type(version) != str:
         return False
@@ -37,6 +40,13 @@ def is_valid_version(version):
 
     # Check if version is valid and above or equal to 1.0
     return Version(version) >= Version("1")
+
+def get_unique(obj):
+    # Unique only
+    if type(obj) == list:
+        return list(dict.fromkeys(obj))
+    else:
+        return False
 
 ###
 # Run ASCII art
@@ -124,17 +134,25 @@ WHITE  = "\033[37m"
 B    = "\033[1m"
 BOFF = "\033[22m"
 
+END = "\033[0m"
+
 def pinfo(text, obj=""):
-    print("[ ] " + text,obj)
+    print(WHITE+"[-] " + text,obj)
+
+def pbinfo(text, obj=""):
+    print(END+"[-] " + text,obj)
 
 def pwarn(text, obj=""):
-    print("["+YELLOW+B+"+"+WHITE+BOFF+"] " + text,obj)
+    print(WHITE+"["+YELLOW+B+"+"+WHITE+BOFF+"] " + text,obj)
 
 def perror(text, obj=""):
-    print("["+RED+B+"-"+WHITE+BOFF+"] " + text,obj)
+    print(WHITE+"["+RED+B+"x"+WHITE+BOFF+"] " + text,obj)
+
+def pdebug(text, obj='', obj2=''):
+    print(WHITE+"["+CYAN+B+"D"+WHITE+BOFF+"] " + text, obj, obj2)
 
 def psuccess(text, obj=""):
-    print("["+GREEN+B+"+"+WHITE+BOFF+"] " + text,obj)
+    print(WHITE+"["+GREEN+B+"+"+WHITE+BOFF+"] " + text,obj)
 
 ##
 # Get file from local file system
