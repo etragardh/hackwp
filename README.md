@@ -56,15 +56,15 @@ hackwp --list payloads <- all payloads
 
 ## Dependencies
 
-TODO: Update list of deps<br />
-TODO: Auto install deps with pip if available<br />
++TODO: Update list of deps<br />
++TODO: Auto install deps with pip if available<br />
 
 ## Performance
-TODO: add support for multi threading
++TODO: add support for multi threading
 (To many, to quick, live requests might get you banned, but handling cached scans can increase performance a lot if multi threaded)
-TODO: Memory management.
++TODO: Memory management.
 (Go through the code and make sure file pointers are closed, files/content released from memory when not used etc)
-TODO: Limit the amount of requests when crawling the local site.
++TODO: Limit the amount of requests when crawling the local site.
 (A large site with thousands of pages takes a long time to scan)
 
 ## Stealth
@@ -80,7 +80,7 @@ hackwp --scan --target http://localhost --spoof-ua <- spoof UA only
 ```
 
 **Proxy**
-TODO: Add proxy support for some thing like this:<br />
++TODO: Add proxy support for some thing like this:<br />
 (https://www.proxyrack.com/)[Proxyrack]
 So every request can have a unique IP
 
@@ -88,7 +88,7 @@ So every request can have a unique IP
 You can connect your computer to a VPN and then run HackWP. The connection will go through your VPN provider.
 
 **TOR**
-TODO: Add support for Onion Routing so requests can have unique IPs andprevent trace backwards.
++TODO: Add support for Onion Routing so requests can have unique IPs andprevent trace backwards.
 
 ## Supported/tested platforms
 Im running MacOS, Kali and Parrot on my laptop.
