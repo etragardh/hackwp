@@ -30,6 +30,7 @@ hackwp --scan --target http://localhost --spoof --debug <- most info
 ```
 
 **Sample hacks**
+
 Test payload
 ```
 hackwp --target http://localhost --attack bricks --exploit 1.9.6-rce --payload test-rce --spoof --debug
@@ -40,6 +41,7 @@ hackwp --target http://localhost --attack bricks --exploit 1.9.6-rce --payload t
 ```
 
 **What commands to run**
+
 HackWP will tell you what commands are available after the scan is complete. It will tell you what exploits will work with the scanned site and give you a command to copy/paste.
 
 You can also list available exploits and payloads like this.
