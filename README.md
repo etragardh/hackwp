@@ -81,7 +81,7 @@ hackwp --scan --target http://localhost --spoof-ua <- spoof UA only
 
 **Proxy**
 +TODO: Add proxy support for some thing like this:<br />
-(https://www.proxyrack.com/)[Proxyrack]
+[Proxyrack](https://www.proxyrack.com/)
 So every request can have a unique IP
 
 **VPN**
