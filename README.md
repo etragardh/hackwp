@@ -82,7 +82,7 @@ hackwp --scan --target http://localhost --spoof-ua <- spoof UA only
 **Proxy**
 +TODO: Add proxy support for some thing like this:<br />
 [Proxyrack](https://www.proxyrack.com/)
-So every request can have a unique IP
+This means every request can have a unique IP and it is not needed to spoof it.
 
 **VPN**
 You can connect your computer to a VPN and then run HackWP. The connection will go through your VPN provider.
