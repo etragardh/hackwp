@@ -14,12 +14,6 @@ class hwpn:
         self.exceptions = requests.exceptions
         self.d = hwpd(args.debug)
 
-        domain = get_domain(args.target)
-        cache_path = get_hackwp_dir() + '/' + domain + '.cache/'
-        if not os.path.exists(cache_path):
-            self.d.msg("cache_patch created")
-            os.mkdir(cache_path)
-  
     def get_session_path(self):
         return self.hwpd+'/'+self.domain+'.session'
 

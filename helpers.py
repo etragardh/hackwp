@@ -10,6 +10,18 @@ def get_version():
 def get_hackwp_dir():
     return os.path.expanduser('~/.hackwp')
 
+# print progress bar
+def print_progress(progress):
+    if progress >= 2:
+        print('\033[F')
+        print('\033[F' + WHITE+"[-] " + str(progress) + ' %')
+    else:
+        print(WHITE+"[-] " + str(progress) + ' %')
+
+    if progress >= 90:
+        print('\033[F')
+        print('\033[F' + WHITE+"[-] " + '100' + ' %')
+
 # Get real path to installation
 def get_realpath():
     return os.path.dirname(os.path.realpath(__file__))
@@ -39,7 +51,10 @@ def is_valid_version(version):
         return False
 
     # Check if version is valid and above or equal to 1.0
-    return Version(version) >= Version("1")
+    try:
+        return Version(version) >= Version("1")
+    except:
+        return False
 
 def get_unique(obj):
     # Unique only

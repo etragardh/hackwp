@@ -99,18 +99,18 @@ class hwpsc:
         ##
         # css on /wp-admin/install.php
         self.d.msg("WPCV on /wp-admin/install.php")
-        pattern = '-css.*wp-[includes|admin].*ver=([1-9]\.[0-9](\.[0-9])?)'
+        pattern = '-css.*wp-(includes|admin).*ver=([1-9]\.[0-9](\.[0-9])?)'
         matches = self.crawler.rfetch(self.args.target + \
-                '/wp-admin/install.php', pattern, 1)
+                '/wp-admin/install.php', pattern, 2)
         self.add_finding(matches)
 
         ##
         # css on /wp-login.php
         self.d.msg("WPCV on /wp-login.php")
         #pattern = '-css.*wp-includes.*ver=([1-9]\.[0-9](\.[0-9])?)'
-        pattern = 'wp-[includes|admin].*ver=([1-9]\.[0-9](\.[0-9])?)'
+        pattern = 'wp-(includes|admin).*ver=([1-9]\.[0-9](\.[0-9])?)'
         matches = self.crawler.rfetch(self.args.target + \
-                '/wp-login.php', pattern, 1)
+                '/wp-login.php', pattern, 2)
         self.add_finding(matches)
 
         ##
@@ -119,9 +119,9 @@ class hwpsc:
         b = uid()
         self.d.msg(f"WPCV on 404 (/{a}/{b}/)")
         #pattern = '-css.*wp-includes.*ver=([1-9]\.[0-9](\.[0-9])?)'
-        pattern = '-css.*wp-[includes|admin].*ver=([1-9]\.[0-9](\.[0-9])?)'
+        pattern = '-css.*wp-(includes|admin).*ver=([1-9]\.[0-9](\.[0-9])?)'
         matches = self.crawler.rfetch(self.args.target + \
-                f'/{a}/{b}/', pattern, 1)
+                f'/{a}/{b}/', pattern, 2)
         self.add_finding(matches)
 
 

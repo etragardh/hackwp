@@ -20,12 +20,16 @@ class hwpsu:
         uri = "/wp-json/wp/v2/users"
         url = self.args.target + uri
         resp = self.crawler.fetch(url)
-        users_json = json.loads(resp.text)
+        try:
+            users_json = json.loads(resp.text)
+        except:
+            users_json = False
 
         if users_json is not False:
             for user_data in users_json:
-                self.d.msg("Adding user:", user_data['slug'])
-                users.append(user_data['slug'])
+                if 'slug' in user_data:
+                    self.d.msg("Adding user:", user_data['slug'])
+                    users.append(user_data['slug'])
 
         ##
         # Step n - Crawl site
@@ -34,15 +38,16 @@ class hwpsu:
         # Grab all oembed urls
         self.d.msg("Users: oembed")
         pattern = f'href="((.*?)\/oembed\/(.*?))("|\')'
-        matches = self.crawler.crawl(self.args.target, pattern, 1, [])
+        matches = self.crawler.crawl(self.args.target, pattern, 1, [])[0]
         # Unique only
         matches = get_unique(matches)
 
         for match in matches:
             pattern = f'author_name":"(.*?)",'
             author = self.crawler.rfetch(match, pattern)
-            users.append(author[0])
-            self.d.msg("Adding user:", author[0])
+            if author is not False:
+                users.append(author[0])
+                self.d.msg("Adding user:", author[0])
 
         ##
         # Step n - Crawl site
@@ -50,7 +55,7 @@ class hwpsu:
         
         self.d.msg("Users: crawl site for links")
         pattern = f'\/author\/(.*?)("|\')'
-        matches = self.crawler.crawl(self.args.target, pattern, 1, [])
+        matches = self.crawler.crawl(self.args.target, pattern, 1, [])[0]
         matches = get_unique(matches)
         if matches:
             self.d.msg("Adding users:", matches)

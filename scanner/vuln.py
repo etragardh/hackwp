@@ -16,6 +16,10 @@ class hwpv:
         with open(self.wp_path, 'r') as f:
             json_data = json.load(f)
 
+            if version not in json_data:
+                perror("-> Invalid")
+                return
+
             if json_data[version] == 'latest':
                 psuccess("-> Latest")
             if json_data[version] == 'outdated':

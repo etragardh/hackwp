@@ -37,13 +37,19 @@ class hwpsp:
 
     def get_crawled_plugins(self):
         pattern = 'wp-content\/plugins\/(.*?)\/'
-        slugs = self.crawler.crawl(self.args.target, pattern)
+        slugs = self.crawler.crawl(self.args.target, pattern)[0]
+        slugs = get_unique(slugs)
 #        print("crawl plugins:",slugs)
 
         plugins = {}
+        n = 1
+        done = len(slugs)
+        print_progress(1)
         for slug in slugs:
             version = self.get_version(slug)
             plugins[slug] = version
+            print_progress(int(n/done*100))
+            n += 1
 
         return plugins
 
@@ -112,7 +118,7 @@ class hwpsp:
         # Why does python remember 'crawled' variable from last crawl?
         # I need to set it to empty array to start new craw =)
         pattern = f'wp-content\/plugins\/{slug}\/(.*?)ver=(.*?)("|\')'
-        versions = self.crawler.crawl(self.args.target, pattern, 2, []) 
+        versions = self.crawler.crawl(self.args.target, pattern, 2, [])[0] 
 #        print("v:", versions)
 
         valid_versions = []

@@ -88,10 +88,9 @@ class hwps:
         pinfo(" -> This might take a while")
         plugins = hwpsp(self.args, self.core['version'])
         self.plugins = plugins.get_plugins()
-
+        pinfo("")
         for slug in self.plugins:
             version = self.plugins[slug] if self.plugins[slug] is not False else "Unknown"
-            pinfo("")
             pinfo(f"Found plugin: {slug} (v: {version})")
 
             # Output if it is vulnerable

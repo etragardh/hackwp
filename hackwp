@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
-import os, re, shutil
+import os, re, shutil, time
 #from session import *
 from helpers import * 
 from scanner.scanner import hwps 
 from importlib.machinery import SourceFileLoader
 from debug import hwpd
 
+# FIXME: dont use this one here ?
 from networking import hwpn
+
+#FIXME: move form scanner to core
+from scanner.crawler import hwpc
 from parser import hwp_parser as hwpp
 
 # Parse arguments
@@ -35,6 +39,11 @@ if not os.path.isdir(hackwp_dir):
 # Path to real installation, not symlink
 realpath = get_realpath()
 
+# HackWP Networking
+# FIXME: change to HackWP
+n = hwpn(args)
+c = hwpc(args)
+
 ##
 # Normalize --target
 if args.target:
@@ -42,28 +51,45 @@ if args.target:
 
 ##
 # Extract sessions and exit
+# FIXME: n is not hackwp
 if args.auth_extraction:
     d.msg("Auth extraction")
-    n = hwpn(args)
     n.extract_auth()
     exit()
 
 ##
-# Purge Cache
+# Handle Cache
+domain = get_domain(args.target)
+cache_dir = get_hackwp_dir() + "/" + domain + ".cache/"
 
+# Purge Cache
 if args.purge_cache:
     d.msg("Cache is purged")
-    domain = get_domain(args.target)
-    cache_dir = get_hackwp_dir() + "/" + domain + ".cache/"
     if os.path.isdir(cache_dir):
         shutil.rmtree(cache_dir)
 
+# Create cache dir
+if not os.path.isdir(cache_dir):
+    d.msg("cache patch created")
+    os.mkdir(cache_dir)
+  
 ##
 # Spoofer
 if args.spoof:
     d.msg("IP & UA spoof is ON")
     args.spoof_ip = True
     args.spoof_ua = True
+
+##
+# Fix human "errors"
+# www or not www
+# https or http
+resp = c.fetch(args.target) 
+print(resp)
+print(resp.history)
+if resp.history and resp.history[0].status_code in [301, 302]:
+    args.target = resp.url.strip('/')
+    d.msg("redirect to:", args.target)
 
 ##
 # Scan target and exit
