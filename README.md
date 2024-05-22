@@ -54,6 +54,11 @@ hackwp --list exploits bricks <- exploits that affects bricks surface
 hackwp --list payloads <- all payloads
 ```
 
+## Documentation
+[Documentation](https://github.com/etragardh/hackwp/tree/main/docs/)
+[Create Exploit](https://github.com/etragardh/hackwp/tree/main/docs/exploit/)
+[Create Payload](https://github.com/etragardh/hackwp/tree/main/docs/payload)
+
 ## Dependencies
 
 +TODO: Update list of deps<br />

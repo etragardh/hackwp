@@ -36,7 +36,9 @@ class hwpc:
         self.d = hwpd(args.debug)
 
     # Crwal entire website, all pages
-    def crawl(self, url, pattern, group=False, crawled=[], exclude=True):
+    def crawl(self, url, pattern, group=False, crawled=[], exclude=True, n = 0):
+        nmax = 100
+
         if crawled == []:
             pass
 #            print("="*20)
@@ -59,6 +61,7 @@ class hwpc:
 
         # Add this url to crawled
         crawled.append(md5sum(url))
+        n += 1
 
         # Get data (fetch can handle cache)
         resp = self.fetch(url)
@@ -78,7 +81,12 @@ class hwpc:
         # Wordpress uses absolute URLs if you dont really mess it up =)
         urls = self.extract_urls(resp.text, self.domain)
         for url in urls:
-            m2 = self.crawl(url[0], pattern, group, crawled)
+            n += 1
+            if n >= nmax:
+                break
+            m2 = self.crawl(url[0], pattern, group, crawled, True, n)
+            if m2 is None:
+                break
             matches = matches + m2 if m2 else matches
 
         # Return unique only
