@@ -22,6 +22,13 @@ chmod +x hackwp/hackwp
 sudo ln -s ${PWD}/hackwp/hackwp /usr/local/bin
 ```
 
+**Update**
+
+```
+cd /path/to/hackwp/
+git pull
+```
+
 **Sample Scan**
 ```
 hackwp --scan --target http://localhost --spoof
