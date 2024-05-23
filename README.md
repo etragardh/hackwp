@@ -71,6 +71,11 @@ hackwp --list payloads <- all payloads
 + Documentation<br />
 + Auto test any input for reflected XSS<br />
 + Enumerate emails<br />
++ Enumerate gravatar hashes<br />
++ Scanner/User should return userObject with:<br />
+ - email<br />
+ - gravatar hash<br />
+ - user id<br />
 
 ## Documentation
 [Documentation](https://github.com/etragardh/hackwp/tree/main/docs/)
