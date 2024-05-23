@@ -23,7 +23,8 @@ args.silent = False
 # Debugger
 d = hwpd(args.debug)
 d.msg("Debugger started", args)
-args.verbose = True
+if args.debug:
+    args.verbose = True
 
 ##
 # Create ~/.hackwp directory if not exists
@@ -38,6 +39,18 @@ if not os.path.isdir(hackwp_dir):
 
 # Path to real installation, not symlink
 realpath = get_realpath()
+
+# Run without target
+if not args.target:
+    hwp_ascii()
+    psuccess("Version:", get_version())
+    exit()
+else:
+    if not args.scan and not args.attack:
+        hwp_ascii()
+        perror("You must supply --scan or --attack")
+        exit()
+
 
 # HackWP Networking
 # FIXME: change to HackWP
@@ -58,7 +71,7 @@ if args.auth_extraction:
     exit()
 
 ##
-# Handle Cache
+# Handle Cache (only if we have a target)
 domain = get_domain(args.target)
 cache_dir = get_hackwp_dir() + "/" + domain + ".cache/"
 
