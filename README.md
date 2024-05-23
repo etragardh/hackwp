@@ -62,6 +62,7 @@ hackwp --list payloads <- all payloads
 + Better error handling<br />
 + Performance and memory management<br />
 + Documentation<br />
++ Auto test any input for reflected XSS<br />
 
 ## Documentation
 [Documentation](https://github.com/etragardh/hackwp/tree/main/docs/)
