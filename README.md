@@ -73,11 +73,11 @@ hackwp --list payloads <- all payloads
 + Enumerate emails<br />
 + Enumerate gravatar hashes<br />
 + Scanner/User should return userObject with:<br />
- + email<br />
- + gravatar hash<br />
- + user id<br />
+ -> email<br />
+ -> gravatar hash<br />
+ -> user id<br />
 + Check gravatar against public rainbow tables<br />
- + Make the api/url optionable<br />
+ -> Make the api/url optionable<br />
 
 ## Documentation
 [Documentation](https://github.com/etragardh/hackwp/tree/main/docs/)
