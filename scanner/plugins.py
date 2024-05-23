@@ -51,6 +51,11 @@ class hwpsp:
             print_progress(int(n/done*100))
             n += 1
 
+        if len(slugs) == 0:
+            print_progress(100)
+            pinfo("No plugins found")
+
+
         return plugins
 
     def get_other_plugins(self, verified_plugins = False):
