@@ -44,8 +44,8 @@ hackwp --target http://localhost --attack bricks --exploit 1.9.6-rce --payload t
 
 HackWP will tell you what commands are available after the scan is complete. It will tell you what exploits will work with the scanned site and give you a command to copy/paste.
 
-You can also list available exploits and payloads like this.
-
+You can also list available exploits and payloads like this.<br />
++TODO: List command is not implemented since there are only a few options
 ```
 hackwp --list <exploits|payloads> <method|surface|author>
 hackwp --list exploits <- all exploits
@@ -53,6 +53,15 @@ hackwp --list exploits rce <- exploits that has RCE
 hackwp --list exploits bricks <- exploits that affects bricks surface
 hackwp --list payloads <- all payloads
 ```
+
+## Roadmap
++ Interesing findings<br />
++ Password spray on enumerated users<br />
++ Stess test reflected DDoS<br />
++ Stess test amplified Dos/DDoS<br />
++ Better error handling<br />
++ Performance and memory management<br />
++ Documentation<br />
 
 ## Documentation
 [Documentation](https://github.com/etragardh/hackwp/tree/main/docs/)
@@ -65,11 +74,11 @@ hackwp --list payloads <- all payloads
 +TODO: Auto install deps with pip if available<br />
 
 ## Performance
-+TODO: add support for multi threading
-(To many, to quick, live requests might get you banned, but handling cached scans can increase performance a lot if multi threaded)
-+TODO: Memory management.
-(Go through the code and make sure file pointers are closed, files/content released from memory when not used etc)
-+TODO: Limit the amount of requests when crawling the local site.
++TODO: add support for multi threading<br />
+(To many, to quick, live requests might get you banned, but handling cached scans can increase performance a lot if multi threaded)<br />
++TODO: Memory management.<br />
+(Go through the code and make sure file pointers are closed, files/content released from memory when not used etc)<br />
++TODO: Limit the amount of requests when crawling the local site.<br />
 (A large site with thousands of pages takes a long time to scan)
 
 ## Stealth
