@@ -3,7 +3,7 @@
 ## Dev branch
 
 This is a tool Im using to offload heavy work from WP pentesting.<br />
-IE for me to re use payloads, use stolen cookies, spoof IPs etc.<br />
+IE for me to re use payloads, use stolen cookies, spoof IPs and UAs etc.<br />
 <br />
 The main idea with open sourceing this is to release a tool that combines the best from `wpscan` and `msf` to be used by pentesters, webmasters and sysadmins to test their own sites, equipment and infrastructure.
 
@@ -80,6 +80,11 @@ hackwp --list payloads <- all payloads
  -> user id<br />
 + Check gravatar against public rainbow tables<br />
  -> Make the api/url optionable<br />
+
+## Issues
++ Update WP Core version regex. (ie v 5.9.10 will show as 5.9.1)
++ Remove message "--Vulnerable to:" for plugins and themes vuln (either just display it once or not at all)
++ False positives on plugins/theme version when WP Core version is used as ?v=6.5.5 on plugin files.
 
 ## Documentation
 [Documentation](https://github.com/etragardh/hackwp/tree/main/docs/)

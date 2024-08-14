@@ -88,10 +88,10 @@ if not os.path.isdir(cache_dir):
   
 ##
 # Spoofer
-if args.spoof:
-    d.msg("IP & UA spoof is ON")
-    args.spoof_ip = True
-    args.spoof_ua = True
+if args.no_spoof:
+    d.msg("IP & UA spoof is OFF")
+    args.no_spoof_ip = True
+    args.no_spoof_ua = True
 
 ##
 # Fix human "errors"

@@ -28,7 +28,7 @@ class hwpn:
     def session_exists(self):
         return os.path.exists(self.get_session_path())
 
-    def get_spoofed_header(self, headers, ip=False, ua=False):
+    def get_spoofed_header(self, headers, ip=True, ua=True):
         if ip is True:
             a = random.randint(1,254)
             b = random.randint(1,254)
@@ -78,7 +78,7 @@ class hwpn:
         ##
         # Spoof IP
         headers = args['headers'] if 'headers' in args else {}
-        headers = self.get_spoofed_header(headers, self.args.spoof_ip, self.args.spoof_ua)
+        headers = self.get_spoofed_header(headers, not self.args.no_spoof_ip,not self.args.no_spoof_ua)
 
         #headers = {**headers, 'User-Agent':'HackWP/'+get_version()}
 
@@ -121,7 +121,7 @@ class hwpn:
 
         ##
         # Spoof IP
-        headers = self.get_spoofed_header(headers, self.args.spoof_ip, self.args.spoof_ua)
+        headers = self.get_spoofed_header(headers, not self.args.no_spoof_ip, not self.args.no_spoof_ua)
         #headers = {**headers, 'User-Agent':'HackWP/'+get_version()}
 
         ##

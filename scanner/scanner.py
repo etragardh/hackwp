@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from importlib.machinery import SourceFileLoader
 import time
 import requests, os
@@ -39,7 +38,7 @@ class hwps:
         last_db_update = get_db_last_update()
         accepted_last_update = time.time() - 60*60*24*7 # 7 days
 
-        if last_db_update <= accepted_last_update:
+        if  last_db_update <= accepted_last_update:
             # Do update
             pwarn("Your database is old, we update it for you now..")
             do_db_update(self.args)

@@ -43,19 +43,19 @@ class hwp_parser:
             help="Send credentials with this request (stolen cookies/hijack session)"
         )
         parser.add_argument(
-            '--spoof',
+            '--no-spoof',
             action='store_true',
-            help="Spoof a new IP _and_ a new User Agent with every request"
+            help="Disable spoofing a new IP _and_ a new User Agent with every request"
         )
         parser.add_argument(
-            '--spoof-ip',
+            '--no-spoof-ip',
             action='store_true',
-            help="Spoof a new IP with every request"
+            help="Don't spoof a new IP with every request"
         )
         parser.add_argument(
-            '--spoof-ua',
+            '--no-spoof-ua',
             action='store_true',
-            help="Spoof a new User Agent with every request"
+            help="Don't spoof a new User Agent with every request"
         )
         parser.add_argument(
             '-z', '--scan',
