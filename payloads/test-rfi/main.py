@@ -12,7 +12,7 @@ def get_methods():
 # or the file path to be uploaded
 def get_instructions(method, args):
     if method == 'RFI':
-        # If we have LFI
+        # If we have RFI
         if args.pos:
             return args.pos
         else:
