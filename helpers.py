@@ -134,6 +134,11 @@ def uid(n=8):
     b64 = base64.b64encode(os.urandom(32))[:n].decode('utf-8')
     return re.sub("(\+|\@|\\/)", 'x', b64)
 
+def b64e(string):
+    return base64.b64encode(string.encode('utf-8')).decode('utf-8')
+def b64d(string):
+    return base64.b64decode(string.encode('utf-8')).decode('utf-8')
+
 ####
 ## Print in Color
 
