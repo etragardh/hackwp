@@ -15,7 +15,7 @@ def get_instructions(method, args):
         # If we have Remote File inclusion
         # Return the file path of mfb.php
         #return [os.path.dirname(os.path.realpath(__file__)) + '/mfb.php']
-        return ['/mfb.php']
+        return ['mfb.php']
 
 ##
 # Author of this payload
