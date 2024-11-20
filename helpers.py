@@ -114,7 +114,7 @@ def launch_message(exploit, payload, args):
     hwp_ascii()
     cols, rows = os.get_terminal_size()
     print("#"*(cols-1))
-    print("## Attacking: " + args.target + " "*(cols-len(args.target)-17) + "##")
+    print("## Attacking: " + args.domain + " "*(cols-len(args.target)-17) + "##")
     print("## Surface:   " + args.attack + " "*(cols-len(args.attack)-17) + "##")
     print("## Exploit:   " + args.exploit +" by: " + exploit.get_author())
     print("## Payload:   " + args.payload +" by: " + payload.get_author())

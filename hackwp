@@ -104,8 +104,8 @@ if args.no_spoof:
 # www or not www
 # https or http
 resp = c.fetch(args.target) 
-print(resp)
-print(resp.history)
+#print(resp)
+#print(resp.history)
 if resp.history and resp.history[0].status_code in [301, 302]:
     args.target = resp.url.strip('/')
     d.msg("redirect to:", args.target)
@@ -150,7 +150,8 @@ if args.attack:
 
     # Go
     # FIXME: This should be loaded dynamically
-    launch_message(exploit, payload, args)
+    if not args.quiet:
+        launch_message(exploit, payload, args)
     instructions = payload.get_instructions(method, args)
     iid = False
     for instruction in instructions:

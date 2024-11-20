@@ -14,12 +14,6 @@ class hwp_parser:
             help='Display version'
         )
         parser.add_argument(
-            '--debug',
-            action='store_true',
-            help='View Debug log'
-        )
-
-        parser.add_argument(
             '-u', '--wp-user',
             help='The WP user_login or user_email'
         )
@@ -78,10 +72,6 @@ class hwp_parser:
             help="Aggressive scanning performs over 15 000 requests, you might want to delay them. Add delay in ms"
         )
         parser.add_argument(
-            '-v', '--verbose',
-            action='store_true',
-        )
-        parser.add_argument(
             '-t', '--target',
             help='The target (domain or full url), full url like this: https://domain.com'
         )
@@ -97,6 +87,23 @@ class hwp_parser:
             '-x', '--payload',
             help='exploit module'
         )
+        parser.add_argument(
+            '-q', '--quiet',
+            action='store_true',
+            help='Do not display launch message'
+        )
+        parser.add_argument(
+            '-v', '--verbose',
+            action='store_true',
+            help='Display more information'
+        )
+        parser.add_argument(
+            '--debug',
+            action='store_true',
+            help='View Debug log'
+        )
+
+
         parser.add_argument(
             'pos', nargs='*'
         )
