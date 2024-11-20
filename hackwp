@@ -52,7 +52,10 @@ else:
         exit()
 
     if not args.target.startswith('http'):
+        args.domain = args.target
         args.target = 'http://' + args.target
+    else:
+        args.domain = get_domain(args.target)
 
 
 # HackWP Networking
@@ -156,7 +159,12 @@ if args.attack:
         elif method == 'LFI':
             exploit.lfi(instruction, args)
         elif method == 'RFI':
-            exploit.rfi(instruction, args)
+            resp = exploit.rfi(instruction, args)
+            if not resp:
+                perror(f'{args.target} FAIL')
+            else:
+                psuccess(f'{args.target} SUCCESS {resp}')
+
         elif method == 'SQLe':
             if iid:
                 instruction = re.sub('#iid#', iid, instruction)
