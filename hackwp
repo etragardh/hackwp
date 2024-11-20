@@ -52,7 +52,7 @@ else:
         exit()
 
     if not args.target.startswith('http'):
-        args.domain = args.target
+        args.domain = args.target.copy()
         args.target = 'http://' + args.target
     else:
         args.domain = get_domain(args.target)
@@ -161,9 +161,9 @@ if args.attack:
         elif method == 'RFI':
             resp = exploit.rfi(instruction, args)
             if not resp:
-                perror(f'{args.target} FAIL')
+                perror(f'{args.domain} FAIL')
             else:
-                psuccess(f'{args.target} SUCCESS {resp}')
+                psuccess(f'{args.domain} SUCCESS {resp}')
 
         elif method == 'SQLe':
             if iid:
