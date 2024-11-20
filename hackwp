@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, re, shutil, time
+import os, re, shutil, time, copy
 #from session import *
 from helpers import * 
 from scanner.scanner import hwps 
@@ -52,7 +52,7 @@ else:
         exit()
 
     if not args.target.startswith('http'):
-        args.domain = args.target.copy()
+        args.domain = copy.deepcopy(args.target)
         args.target = 'http://' + args.target
     else:
         args.domain = get_domain(args.target)
