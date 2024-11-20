@@ -51,6 +51,9 @@ else:
         perror("You must supply --scan or --attack")
         exit()
 
+    if not args.target.startswith('http'):
+        args.target = 'http://' + args.target
+
 
 # HackWP Networking
 # FIXME: change to HackWP

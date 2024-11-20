@@ -83,7 +83,7 @@ class hwp_parser:
         )
         parser.add_argument(
             '-t', '--target',
-            help='The target url, full url like this: https://domain.com'
+            help='The target (domain or full url), full url like this: https://domain.com'
         )
         parser.add_argument(
             '-a', '--attack',
