@@ -55,8 +55,12 @@ class hwpst:
         resp = n.get(url)
 
         match = re.search('Version: (.*?)([\r\n]|\r\n)', resp.text, re.IGNORECASE)
-        if match:
-            if Version(match.group(1)) >= Version("1"):
+        try:
+            if match and match.group(1):
+                if Version(match.group(1)) >= Version("1"):
+                    return match.group(1)
+        except:
+            if isinstance(match.group(1), str):
                 return match.group(1)
 
         return False
