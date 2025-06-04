@@ -1,5 +1,8 @@
 # HackWP
 
+>[!CAUTION]
+> Im working on v2 of this tool. It is rewritten from scratch and v2 is the tool used at Swedish security fest. If you say my talk looking for hackwp. You have to use v1 in the mean time. I will release v2 as soon as I have had time to migrate all features
+
 ## Dev branch
 
 This is a tool Im using to offload heavy work from WP pentesting.<br />
