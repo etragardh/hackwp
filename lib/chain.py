@@ -235,7 +235,7 @@ def run_chain(exploit_classes, payload_class, target, domain, options, verbose=0
     # ── Phase 7: Get instructions from payload ────────────────────────
     rfi_server = None
     if payload_class and matched_method:
-        payload_instance = payload_class(options=options, verbose=verbose)
+        payload_instance = payload_class(target=target, domain=domain, options=options, verbose=verbose)
         payload_instance.method = matched_method
         try:
             instructions = payload_instance.instructions()

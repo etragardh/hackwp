@@ -905,7 +905,7 @@ class HWPApp(App):
             cves = " ".join(getattr(cls, "cves", []) or [])
             authors = " ".join(getattr(cls, "authors", []) or [])
             desc = getattr(cls, "description", "") or ""
-            searchable = f"{ref} {cls.type} {cls.slug} {cls.capability} {cves} {authors} {desc}".lower()
+            searchable = f"{ref} {cls.type} {cls.slug} {cls.capability} {cves} {authors}".lower()
             if query and query not in searchable:
                 continue
 
