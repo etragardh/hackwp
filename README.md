@@ -147,7 +147,7 @@ hwp -t target.com --clear-session
 
 This project is licensed under the [GNU General Public License v3.0](LICENSE).
 
-Copyright (c) 2025 [@etragardh](https://github.com/etragardh)
+Copyright (c) 2024 [@etragardh](https://github.com/etragardh)
 
 ## Disclaimer
 
