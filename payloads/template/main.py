@@ -1,38 +1,41 @@
-##
-# HackWP needs to know what methods is required to use this
-def get_methods():
-    return ['RCE', 'LFI', 'RFI', 'SQLe', 'SQLr']
+"""
+HWP Payload Template
+Copy this folder and modify to create your own payload.
 
-##
-# HackWP needs instructions based on how the payload works
-# Se sample returns
-def get_instructions(method, args):
-    if method == 'RCE':
-        if args.pos:
-            return args.pos                     # Positional arguments
-        else:
-            return [
-                "<?php echo 'Test RCE 1'; ?>",  # PHP code
-                "<?php echo 'Test RCE 2'; ?>",  # Multiple executions
-            ]
-    elif method == 'LFI':
-        return ['/etc/shadow']                  # File on target FS
-    elif method == 'RFI':
-        return ['./shell.php']                  # File relative to this dir
-    elif method == 'SQLe':
-        return ['INSERT INTO ...']              # SQL (read and write)
-    elif method == 'SQLr':
-        return ['SELECT * FROM ...']            # SQL (read only)
+Folder structure:
+    payloads/<name>/main.py
 
-##
-# Author of this payload
-# You will be mentioned when some one using this payload
-def get_author():
-    return "@etragardh"
+Example:
+    payloads/my_payload/main.py
+"""
 
-##
-# Special thanks to:
-# People who helped or people who created open source stuff you are using
-# They will be mentioned when some one is using this payload
-def get_thanks():
-    return ['@Smitka', '@Renato']
+from hwp import Payload
+
+
+class MyPayload(Payload):
+    name = "My Payload"
+    methods = ["RCE"]           # Which exploit capabilities I work with
+    description = "Describe what this payload does"
+
+    def instructions(self):
+        """
+        Return a list of instruction strings for the given method.
+
+        Available context:
+            self.target     — Base URL
+            self.domain     — Domain string
+            self.options    — Extra CLI args (e.g. self.options.get("lhost"))
+
+        Placeholders (resolved by framework between instructions):
+            {prev.output}        — Output from previous instruction
+            {prev.insert_id}     — Insert ID from previous SQL instruction
+            {prev.rows_affected} — Rows affected by previous SQL instruction
+        """
+        if self.method == "RCE":
+            return ["<?php echo 'Hello from my payload'; ?>"]
+
+    def report(self, results):
+        """Optional: print a summary after all instructions have run."""
+        for r in results:
+            if r.success:
+                self.success("It worked!")

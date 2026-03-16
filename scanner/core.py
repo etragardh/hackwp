@@ -1,324 +1,488 @@
-from networking import hwpn
-from helpers import * 
-import os, requests, hashlib
-from urllib.parse import urlparse
-from scanner.crawler import hwpc
-from debug import hwpd
-class hwpsc:
+"""
+WordPress Core version detection.
 
-    def __init__(self, args):
-        self.args = args
-        self.d = hwpd(args.debug)
-        self.crawler = hwpc(args)
-        self.findings = []
+Checks multiple sources for the WP version, then picks the most frequent finding.
+"""
 
-    ##
-    # HackWP needs to know what version of WP Core
-    # the target site is running
-    # get all checksums for latest
-    # get all checksums for 2nd to latest
-    # get all checksums in latest, that are different
-    # if there is just one single match, we know it is a HIT
+import re
+from collections import Counter
 
-    def add_finding(self, matches):
-        if matches is False:
-            self.d.msg('Matches arr are False')
-            return
-        for match in matches:
-            if is_valid_version(match):
-                self.d.msg('Add finding:', match)
-                self.findings.append(match)
-            else:
-                self.d.msg('Reject finding:', match)
-
-    def get_version(self):
-        ##
-        # generator on index
-        self.d.msg("WPCV on /")
-        pattern = 'generator.*WordPress ([1-9]\.[0-9](\.[0-9])?)'
-        matches = self.crawler.rfetch(self.args.target + \
-                '/', pattern, 1)
-        self.add_finding(matches)
-        
-        ##
-        # generator on /feed
-        self.d.msg("WPCV on /feed")
-        pattern = 'generator.*wordpress.*v=([1-9]\.[0-9](\.[0-9])?)'
-        matches = self.crawler.rfetch(self.args.target + \
-                '/feed', pattern, 1)
-        self.add_finding(matches)
-        
-        ##
-        # generator on /feed/rss
-        self.d.msg("WPCV on /feed/rss")
-        pattern = 'generator.*wordpress.*v=([1-9]\.[0-9](\.[0-9])?)'
-        matches = self.crawler.rfetch(self.args.target + \
-                '/feed/rss', pattern, 1)
-        self.add_finding(matches)
-        
-        ##
-        # generator on /?feed=rss
-        self.d.msg("WPCV on /?feed=rss")
-        pattern = 'generator.*wordpress.*v=([1-9]\.[0-9](\.[0-9])?)'
-        matches = self.crawler.rfetch(self.args.target + \
-                '/?feed=rss', pattern, 1)
-        self.add_finding(matches)
-
-        ##
-        # generator on /feed/rdf
-        self.d.msg("WPCV on /feed/rdf")
-        pattern = 'generator.*wordpress.*v=([1-9]\.[0-9](\.[0-9])?)'
-        matches = self.crawler.rfetch(self.args.target + \
-                '/feed/rdf', pattern, 1)
-        self.add_finding(matches)
-        
-        ##
-        # generator on /?feed=rdf
-        self.d.msg("WPCV on /?feed=rdf")
-        pattern = 'generator.*wordpress.*v=([1-9]\.[0-9](\.[0-9])?)'
-        matches = self.crawler.rfetch(self.args.target + \
-                '/?feed=rdf', pattern, 1)
-        self.add_finding(matches)
-
-        ##
-        # generator on /feed/atom
-        self.d.msg("WPCV on /feed/atom")
-        pattern = 'generator.*wordpress.*version="([1-9]\.[0-9](\.[0-9])?)'
-        matches = self.crawler.rfetch(self.args.target + \
-                '/feed/atom', pattern, 1)
-        self.add_finding(matches)
-
-        ##
-        # generator on /?feed=atom
-        self.d.msg("WPCV on /?feed=atom")
-        pattern = 'generator.*wordpress.*version="([1-9]\.[0-9](\.[0-9])?)'
-        matches = self.crawler.rfetch(self.args.target + \
-                '/?feed=atom', pattern, 1)
-        self.add_finding(matches)
-
-        ##
-        # css on /wp-admin/install.php
-        self.d.msg("WPCV on /wp-admin/install.php")
-        pattern = '-css.*wp-(includes|admin).*ver=([1-9]\.[0-9](\.[0-9])?)'
-        matches = self.crawler.rfetch(self.args.target + \
-                '/wp-admin/install.php', pattern, 2)
-        self.add_finding(matches)
-
-        ##
-        # css on /wp-login.php
-        self.d.msg("WPCV on /wp-login.php")
-        #pattern = '-css.*wp-includes.*ver=([1-9]\.[0-9](\.[0-9])?)'
-        pattern = 'wp-(includes|admin).*ver=([1-9]\.[0-9](\.[0-9])?)'
-        matches = self.crawler.rfetch(self.args.target + \
-                '/wp-login.php', pattern, 2)
-        self.add_finding(matches)
-
-        ##
-        # css on 404
-        a = uid()
-        b = uid()
-        self.d.msg(f"WPCV on 404 (/{a}/{b}/)")
-        #pattern = '-css.*wp-includes.*ver=([1-9]\.[0-9](\.[0-9])?)'
-        pattern = '-css.*wp-(includes|admin).*ver=([1-9]\.[0-9](\.[0-9])?)'
-        matches = self.crawler.rfetch(self.args.target + \
-                f'/{a}/{b}/', pattern, 2)
-        self.add_finding(matches)
+from scanner.crawler import Crawler
+from lib.output import section, found, notfound, info, warn, verbose, vuln
 
 
-        best_guess = most_frequent(self.findings)
-        if is_valid_version(best_guess):
-            return best_guess
+VERSION_RE = re.compile(r'^[1-9]\d{0,2}\.\d{1,3}(\.\d{1,3})?$')
 
-        # If best guess is not a valid version
-        # AND agressive is turned on
-        # We scan for signatures
 
-        if self.args.agressive:
-            best_guess = self.signature_scan()
-        
-        if is_valid_version(best_guess):
-            return best_guess
-        else:
-            return False
-
-    def signature_scan():
-        self.d.msg("WP Version signature scan")
-        versions = self.get_wp_core_versions()
-        versions = list(versions)
-        for i, version in enumerate(versions):
-
-            # Fetch the changed files and checksums for this version
-            checksums = self.get_wp_core_checksums(version, versions[i+1])
-
-            total = 0
-            matches = 0
-            for file in checksums:
-
-                # Only keep files that we can access remote
-                if ".css" not in file and ".js" not in file:
-                    continue
-
-                if ".json" in file:
-                    continue
-
-                wp_signature = checksums[file]
-                target_signature = self.get_target_signature(file)
-
-                # Skip if download did not succeed
-                if target_signature == False:
-                    continue
-
-                total += 1
-                if (target_signature == wp_signature):
-                    matches += 1
-                    #print("MATCH", file)
-                else:
-                    pass
-                    #print("="*40)
-                    #print("MISS", file)
-                    #print(" -> (file)", md5sum(file))
-
-                #print(" -> (wp)", wp_signature)
-                #print(" -> (target)", target_signature)
-
-            self.d.msg("Version check:", version)
-            self.d.msg(" -> total", total)
-            self.d.msg(" -> matches", matches)
-            self.d.msg(" -> fails", total-matches)
-
-            if total-matches <= 2 and total >= 3:
-                return version
-
-            # Reset counter for next iteration/version
-            total = 0
-            matches = 0
-
+def is_valid_version(v: str | None) -> bool:
+    if not v or not isinstance(v, str):
         return False
-
-    ##
-    # Get target signature of specific file
-    def get_target_signature(self, file):
-        #self.d.msg("get signature for file:", file)
-        domain = get_domain(self.args.target)
-        cache_path = get_hackwp_dir() + '/' + domain + '.cache/'
-        
-        # Create cache path
-        #if not os.path.exists(cache_path):
-        #    self.d.msg("cache_patch created")
-        #    os.mkdir(cache_path)
-
-        # Return from cache if exists (these files dont change)
-        if os.path.exists(cache_path + md5sum(file)):
-            size = os.path.getsize(cache_path + md5sum(file))
-            if int(size) >= 2000000:
-                # We cannot handle hashes for too large files
-                self.d.msg("size > 2000000:", file)
-                return False
-            with open(cache_path + md5sum(file), 'r') as r:
-                return md5sum(r.read())
-
-        # Get file from remote
-        n = hwpn(self.args)
-        with n.get(self.args.target + '/' + file, stream=True) as r:
-            #r.raise_for_status()
-            if r.status_code != 200:
-                self.d.msg(f"Status ({r.status_code}):", file)
-                return False
-        
-        # Save to cache
-        with open(cache_path + md5sum(file), 'wb') as f:
-            for chunk in r.iter_content(chunk_size=4096):
-                # If you have chunk encoded response uncomment if
-                # and set chunk_size parameter to None.
-                #if chunk:
-                f.write(chunk)
-
-#        with n.get(self.args.target + '/' + file) as resp:
-#            if resp.status_code != 200:
-#                return False
-#            hash = md5sum(resp.text)
-
-        # Save hash to cache file
-#        with open(cache_path + md5sum(file), 'w+') as f:
-#            f.write(hash)
-
-        size = os.path.getsize(cache_path + md5sum(file))
-        if int(size) >= 2000000:
-            # We cannot handle hashes for too large files
-            return False
-        with open(cache_path + md5sum(file), 'r') as r:
-            return md5sum(r.read()) # its already hashed
-#        return hash
-
-    ##
-    # Get a list of _all_ WP Core versions
-    def get_wp_core_versions(self):
-        versions        = file_get_json(get_realpath() + '/assets/scanner/wp.json')
-        sorted_versions = dict(sorted(versions.items()))
-        r_versions = reversed(sorted_versions)
-       
-        out = {}
-        for v in r_versions:
-            out.update({v:versions[v]})
-
-        return out
-
-    ##
-    # Get _changed_ checksums for a specific version of WP Core
-    # Changed is compared to the version that comes just before
-    def get_wp_core_checksums(self, version, prev_version):
-        this_path = get_realpath() + f'/assets/scanner/wp_{version}.json'
-        prev_path = get_realpath() + f'/assets/scanner/wp_{prev_version}.json'
-        
-        if not os.path.exists(this_path):
-            self.download_wp_core_checksums(version)
-
-        if not os.path.exists(prev_path):
-            self.download_wp_core_checksums(prev_version)
-
-        this_json = file_get_json(this_path)['checksums']
-        prev_json = file_get_json(prev_path)['checksums']
-
-        out = {}
-
-        for this_file in this_json:
-            this_hash = this_json[this_file]
-            prev_hash = prev_json[this_file] if this_file in prev_json else ""
-            
-            if this_hash != prev_hash:
-                #print("changed:", this_file)
-                out[this_file] = this_hash
-
-            if this_file not in prev_json.keys():
-                #print("new", this_file, this_hash)
-                out[this_file] = this_hash
-
-        return out
-
-    ##
-    # Download WP Core checksums for a specific version of WP Core
-    def download_wp_core_checksums(self, version):
-        path = get_realpath() + f'/assets/scanner/wp_{version}.json'
-        if not os.path.exists(path):
-            if self.args.verbose: pwarn("Downloading wp checksums: ", version)
-            with requests.get(f'https://api.wordpress.org/core/checksums/1.0/?version={version}&locale=en_US') as r:
-                with open(path, 'w+') as f:
-                    f.write(r.text)
-
-    def get_version_legacy(self):
-        ## Not all of these are present in every installation
+    return bool(VERSION_RE.match(v.strip()))
 
 
-        ## / (self.html)
-        ## <meta name="generator" content="WordPress 6.5.3" />
-        ## wp-emoji-release.min.js?ver=6.5.3
-        ## <link rel="stylesheet" id="wp-block-library-css" href="https://geary.co/wp-includes/css/dist/block-library/style.css?ver=6.5.3" media="all" />
+def best_guess(findings: list[str]) -> str | None:
+    valid = [v for v in findings if is_valid_version(v)]
+    if not valid:
+        return None
+    counter = Counter(valid)
+    return counter.most_common(1)[0][0]
 
-        ## /wp-login.php
-        ## <script src="http://localhost/wp-admin/js/password-strength-meter.min.js?ver=6.5.3" id="password-strength-meter-js"></script>
 
-        ## /feed
-        ## <generator>https://wordpress.org/?v=6.5.3</generator>
+class CoreScanner:
+    """Detects WordPress core version."""
 
-        ## 
-        return "6.5.9"
+    def __init__(self, crawler: Crawler, args):
+        self.crawler = crawler
+        self.args = args
+        self.findings: list[str] = []
+
+    async def scan(self) -> dict:
+        section("WordPress Core")
+
+        result = {
+            "version": None,
+            "version_sources": [],
+            "interesting_files": [],
+        }
+
+        # Run all version detection methods concurrently
+        checks = [
+            self._check_meta_generator(),
+            self._check_feeds(),
+            self._check_login_page(),
+            self._check_install_page(),
+            self._check_404_page(),
+            self._check_readme_html(),
+            self._check_rest_api_root(),
+            self._check_link_header(),
+            self._check_opml_generator(),
+            self._check_wp_includes_ver(),
+        ]
+
+        import asyncio
+        await asyncio.gather(*checks)
+
+        version = best_guess(self.findings)
+        result["version"] = version
+        result["version_sources"] = list(set(self.findings))
+
+        # Check interesting files
+        interesting = await self._check_interesting_files()
+        result["interesting_files"] = interesting
+
+        return result
+
+    async def _add_findings(self, source: str, matches: list[str]):
+        for m in matches:
+            m = m.strip()
+            if is_valid_version(m):
+                self.findings.append(m)
+        # Log unique findings only
+        unique_new = set(m.strip() for m in matches if is_valid_version(m.strip()))
+        for v in unique_new:
+            verbose(f"Version from {source}: {v}", self.args.verbose)
+
+    # ── Meta generator tag on index ────────────────────────────────
+
+    async def _check_meta_generator(self):
+        pattern = r'<meta[^>]+name=["\']generator["\'][^>]+content=["\']WordPress\s+([0-9]+\.[0-9]+\.?[0-9]*)["\']'
+        matches = await self.crawler.fetch_and_grep(self.args.target + "/", pattern, 1)
+        await self._add_findings("meta generator", matches)
+
+    # ── RSS / Atom / RDF feeds ─────────────────────────────────────
+
+    async def _check_feeds(self):
+        feed_paths = [
+            "/feed", "/feed/rss", "/?feed=rss",
+            "/feed/rdf", "/?feed=rdf",
+            "/feed/atom", "/?feed=atom",
+        ]
+        # RSS/RDF pattern
+        rss_pattern = r'<generator>https?://wordpress\.org/\?v=([0-9]+\.[0-9]+\.?[0-9]*)</generator>'
+        # Atom pattern
+        atom_pattern = r'<generator[^>]+version=["\']([0-9]+\.[0-9]+\.?[0-9]*)["\']'
+
+        import asyncio
+        tasks = []
+        for path in feed_paths:
+            url = self.args.target + path
+            pat = atom_pattern if "atom" in path else rss_pattern
+            tasks.append(self.crawler.fetch_and_grep(url, pat, 1))
+
+        results = await asyncio.gather(*tasks)
+        for i, matches in enumerate(results):
+            source = f"feed ({feed_paths[i]})"
+            await self._add_findings(source, matches)
+
+    # ── Login page CSS/JS ver= params ──────────────────────────────
+
+    async def _check_login_page(self):
+        pattern = r'wp-(?:includes|admin)/[^"\']+\?ver=([0-9]+\.[0-9]+\.?[0-9]*)'
+        matches = await self.crawler.fetch_and_grep(
+            self.args.target + "/wp-login.php", pattern, 1
+        )
+        await self._add_findings("wp-login.php", matches)
+
+    # ── Install page ───────────────────────────────────────────────
+
+    async def _check_install_page(self):
+        pattern = r'wp-(?:includes|admin)/[^"\']+\?ver=([0-9]+\.[0-9]+\.?[0-9]*)'
+        matches = await self.crawler.fetch_and_grep(
+            self.args.target + "/wp-admin/install.php", pattern, 1
+        )
+        await self._add_findings("install.php", matches)
+
+    # ── 404 page ───────────────────────────────────────────────────
+
+    async def _check_404_page(self):
+        import secrets
+        random_path = f"/{secrets.token_hex(8)}/{secrets.token_hex(8)}/"
+        pattern = r'wp-(?:includes|admin)/[^"\']+\?ver=([0-9]+\.[0-9]+\.?[0-9]*)'
+        matches = await self.crawler.fetch_and_grep(
+            self.args.target + random_path, pattern, 1
+        )
+        await self._add_findings("404 page", matches)
+
+    # ── readme.html ────────────────────────────────────────────────
+
+    async def _check_readme_html(self):
+        resp = await self.crawler.fetch(self.args.target + "/readme.html")
+        if resp and resp.status_code == 200:
+            pattern = r'Version\s+([0-9]+\.[0-9]+\.?[0-9]*)'
+            matches = self.crawler.client.grep(resp.text, pattern, 1)
+            await self._add_findings("readme.html", matches)
+
+    # ── REST API root ──────────────────────────────────────────────
+
+    async def _check_rest_api_root(self):
+        resp = await self.crawler.fetch(self.args.target + "/wp-json/")
+        if resp and resp.status_code == 200:
+            # The root REST response includes WP version in the 'name' or
+            # sometimes the response itself reveals capabilities
+            # But mostly we look for "namespaces" to discover plugins
+            import json
+            try:
+                data = json.loads(resp.text)
+                # Some configs expose version in the description or via oembed
+                if "gmt_offset" in data or "namespaces" in data:
+                    verbose("REST API root accessible (useful for plugin discovery)", self.args.verbose)
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+    # ── Link header ────────────────────────────────────────────────
+
+    async def _check_link_header(self):
+        resp = await self.crawler.fetch(self.args.target + "/")
+        if resp:
+            link = resp.headers.get("link", "")
+            if "api.w.org" in link:
+                verbose("Link header confirms WordPress (api.w.org)", self.args.verbose)
+
+            # X-Redirect-By header
+            xrb = resp.headers.get("x-redirect-by", "")
+            if "wordpress" in xrb.lower():
+                verbose("X-Redirect-By header confirms WordPress", self.args.verbose)
+
+    # ── OPML Generator ──────────────────────────────────────────
+
+    async def _check_opml_generator(self):
+        """Check wp-links-opml.php for version in generator attribute."""
+        resp = await self.crawler.fetch(self.args.target + "/wp-links-opml.php")
+        if resp and resp.status_code == 200:
+            pattern = r'generator="[Ww]ord[Pp]ress/([0-9]+\.[0-9]+\.?[0-9]*)"'
+            matches = self.crawler.client.grep(resp.text, pattern, 1)
+            await self._add_findings("opml generator", matches)
+
+    # ── wp-includes ?ver= parameters ────────────────────────────
+
+    async def _check_wp_includes_ver(self):
+        """Extract WP version from ?ver= params on wp-includes CSS/JS in homepage."""
+        resp = await self.crawler.fetch(self.args.target + "/")
+        if not resp or resp.status_code != 200:
+            return
+
+        # Same files WPScan checks for "Most Common Wp Includes Query Parameter"
+        wp_includes_files = [
+            "wp-includes/js/wp-embed.min.js",
+            "wp-includes/css/dist/block-library/style.min.css",
+            "wp-includes/css/dist/block-library/style.css",
+            "wp-includes/css/dashicons.min.css",
+            "wp-includes/js/comment-reply.min.js",
+        ]
+
+        for f in wp_includes_files:
+            pattern = re.escape(f) + r'\?ver=([0-9]+\.[0-9]+\.?[0-9]*)'
+            matches = re.findall(pattern, resp.text)
+            for m in matches:
+                if is_valid_version(m):
+                    self.findings.append(m)
+                    verbose(f"Version from wp-includes ver param ({f}): {m}", self.args.verbose)
+
+    # ── Interesting files ──────────────────────────────────────────
+
+    async def _check_interesting_files(self) -> list[dict]:
+        """Check for files that shouldn't be publicly accessible."""
+        interesting = []
+
+        # We need a baseline 404 response to detect soft 404s
+        import secrets
+        baseline_url = self.args.target + f"/{secrets.token_hex(16)}.{secrets.token_hex(4)}"
+        baseline_resp = await self.crawler.fetch(baseline_url)
+        baseline_length = len(baseline_resp.text) if baseline_resp else 0
+        baseline_status = baseline_resp.status_code if baseline_resp else 404
+
+        files_to_check = [
+            ("readme.html", "WordPress readme - may reveal version", "info"),
+            ("license.txt", "WordPress license file", "info"),
+            ("wp-content/debug.log", "Debug log - may contain sensitive info", "high"),
+            (".git/HEAD", "Git repository exposed", "high"),
+            (".svn/entries", "SVN repository exposed", "high"),
+            (".env", "Environment file - may contain credentials", "critical"),
+            ("wp-admin/install.php", "Installation script accessible", "critical"),
+            ("xmlrpc.php", "XML-RPC endpoint", "info"),
+            ("wp-content/uploads/", "Uploads directory listing", "medium"),
+            ("wp-content/plugins/", "Plugins directory listing", "medium"),
+            ("wp-content/themes/", "Themes directory listing", "medium"),
+            ("wp-content/mu-plugins/", "Must-Use Plugins directory", "info"),
+        ]
+
+        import asyncio
+        tasks = []
+        for filename, description, severity in files_to_check:
+            url = self.args.target + "/" + filename
+            tasks.append(self.crawler.fetch(url))
+
+        responses = await asyncio.gather(*tasks)
+
+        for (filename, description, severity), resp in zip(files_to_check, responses):
+            result = self._validate_interesting_file(
+                filename, description, severity, resp,
+                baseline_length, baseline_status
+            )
+            if result:
+                interesting.append(result)
+
+        # Config backups and DB exports only in aggressive mode
+        if self.args.aggressive >= 1:
+            config_results = await self._check_config_backups(baseline_length, baseline_status)
+            interesting.extend(config_results)
+
+            db_results = await self._check_db_exports(baseline_length, baseline_status)
+            interesting.extend(db_results)
+
+        return interesting
+
+    def _validate_interesting_file(
+        self, filename: str, description: str, severity: str,
+        resp, baseline_length: int, baseline_status: int
+    ) -> dict | None:
+        """Validate a single interesting file response. Returns entry or None."""
+        if resp is None:
+            return None
+
+        is_interesting = False
+
+        # Skip redirects
+        if resp.was_redirected:
+            verbose(f"Skipping {filename} (redirected)", self.args.verbose)
+            return None
+
+        # Skip non-200 (with exceptions)
+        if resp.status_code != 200:
+            if filename == "xmlrpc.php" and (
+                resp.status_code == 405 or
+                "XML-RPC server accepts POST requests only" in resp.text
+            ):
+                is_interesting = True
+                severity = "info"
+            else:
+                return None
+
+        # Skip soft 404s
+        if resp.status_code == 200 and baseline_status == 200:
+            length_diff = abs(len(resp.text) - baseline_length)
+            if length_diff < 200:
+                verbose(f"Skipping {filename} (soft 404)", self.args.verbose)
+                return None
+
+        # Content-specific validation
+        if resp.status_code == 200:
+            if "wp-config" in filename:
+                config_indicators = ["DB_NAME", "DB_USER", "DB_PASSWORD", "<?php", "define("]
+                if not any(ind in resp.text for ind in config_indicators):
+                    verbose(f"Skipping {filename} (no config content)", self.args.verbose)
+                    return None
+
+            elif filename == ".git/HEAD":
+                if not resp.text.strip().startswith("ref:"):
+                    verbose(f"Skipping {filename} (not a git HEAD)", self.args.verbose)
+                    return None
+
+            elif filename == ".svn/entries":
+                if not resp.text.strip()[:2].isdigit():
+                    verbose(f"Skipping {filename} (not SVN entries)", self.args.verbose)
+                    return None
+
+            elif filename == ".env":
+                env_pattern = r'^[A-Z_]+=.+'
+                if not re.search(env_pattern, resp.text, re.MULTILINE):
+                    verbose(f"Skipping {filename} (not an env file)", self.args.verbose)
+                    return None
+
+            elif filename == "wp-content/debug.log":
+                if "PHP" not in resp.text and "Warning" not in resp.text and "Error" not in resp.text:
+                    verbose(f"Skipping {filename} (not a debug log)", self.args.verbose)
+                    return None
+
+            elif filename.endswith("/"):
+                if "Index of" not in resp.text and "<title>Index" not in resp.text:
+                    # mu-plugins: even without directory listing, if it returns 200 it exists
+                    if filename == "wp-content/mu-plugins/":
+                        is_interesting = True
+                    else:
+                        return None
+
+            elif filename == "wp-admin/install.php":
+                text_lower = resp.text.lower()
+                if ("already installed" in text_lower or
+                        "log in" in text_lower or
+                        "wp-login.php" in text_lower):
+                    verbose(f"Skipping {filename} (WordPress already installed)", self.args.verbose)
+                    return None
+                if "setup-config.php" in text_lower or "select a default language" in text_lower:
+                    is_interesting = True
+                else:
+                    return None
+
+            elif filename in ("readme.html", "license.txt"):
+                is_interesting = True
+
+            else:
+                is_interesting = True
+
+            if not is_interesting and resp.status_code == 200:
+                is_interesting = True
+
+        if is_interesting:
+            entry = {
+                "file": filename,
+                "description": description,
+                "status_code": resp.status_code,
+                "severity": severity,
+            }
+            printer = {"critical": vuln, "high": vuln, "medium": warn, "low": info, "info": info}
+            printer.get(severity, info)(filename, description)
+            return entry
+
+        return None
+
+    async def _check_config_backups(self, baseline_length: int, baseline_status: int) -> list[dict]:
+        """Check for wp-config backup files using expanded wordlist."""
+        from pathlib import Path
+        data_dir = Path(__file__).parent.parent / "data"
+        wordlist_path = data_dir / "config_backups.txt"
+
+        if not wordlist_path.exists():
+            return []
+
+        with open(wordlist_path) as f:
+            filenames = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+
+        results = []
+        batch_size = self.args.concurrency * 2
+
+        for i in range(0, len(filenames), batch_size):
+            batch = filenames[i:i + batch_size]
+            urls = [self.args.target + "/" + fn for fn in batch]
+
+            import asyncio
+            responses = await self.crawler.client.get_batch(urls, use_cache=True)
+
+            for fn, resp in zip(batch, responses):
+                if resp is None or resp.was_redirected or resp.status_code != 200:
+                    continue
+
+                # Soft 404 check
+                if baseline_status == 200:
+                    if abs(len(resp.text) - baseline_length) < 200:
+                        continue
+
+                # Must contain actual config content
+                config_indicators = ["DB_NAME", "DB_USER", "DB_PASSWORD", "<?php", "define("]
+                if any(ind in resp.text for ind in config_indicators):
+                    entry = {
+                        "file": fn,
+                        "description": "Config backup - CREDENTIALS EXPOSED",
+                        "status_code": 200,
+                        "severity": "critical",
+                    }
+                    results.append(entry)
+                    vuln(f"[CRITICAL] {fn}", "Config backup - CREDENTIALS EXPOSED")
+
+        verbose(f"Config backups: checked {len(filenames)} paths, {len(results)} found", self.args.verbose)
+        return results
+
+    async def _check_db_exports(self, baseline_length: int, baseline_status: int) -> list[dict]:
+        """Check for database export files left in the webroot."""
+        from pathlib import Path
+        from urllib.parse import urlparse
+        data_dir = Path(__file__).parent.parent / "data"
+        wordlist_path = data_dir / "db_exports.txt"
+
+        if not wordlist_path.exists():
+            return []
+
+        # Get domain name for {domain_name} substitution
+        parsed = urlparse(self.args.target)
+        domain = parsed.hostname or ""
+        domain_name = domain.split(".")[0] if domain else "wordpress"
+
+        with open(wordlist_path) as f:
+            raw_filenames = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+
+        # Substitute {domain_name} and also try with full domain
+        filenames = []
+        for fn in raw_filenames:
+            if "{domain_name}" in fn:
+                filenames.append(fn.replace("{domain_name}", domain_name))
+                filenames.append(fn.replace("{domain_name}", domain.replace(".", "_")))
+            else:
+                filenames.append(fn)
+
+        results = []
+        batch_size = self.args.concurrency * 2
+
+        for i in range(0, len(filenames), batch_size):
+            batch = filenames[i:i + batch_size]
+            urls = [self.args.target + "/" + fn for fn in batch]
+
+            import asyncio
+            responses = await self.crawler.client.get_batch(urls, use_cache=True)
+
+            for fn, resp in zip(batch, responses):
+                if resp is None or resp.was_redirected or resp.status_code != 200:
+                    continue
+
+                # Soft 404 check
+                if baseline_status == 200:
+                    if abs(len(resp.text) - baseline_length) < 200:
+                        continue
+
+                # Validate it looks like SQL
+                sql_indicators = [
+                    "CREATE TABLE", "INSERT INTO", "DROP TABLE",
+                    "-- MySQL", "-- Dump", "BEGIN TRANSACTION",
+                    "wp_options", "wp_posts", "wp_users",
+                ]
+                if any(ind in resp.text[:5000] for ind in sql_indicators):
+                    entry = {
+                        "file": fn,
+                        "description": "Database export - FULL DATABASE EXPOSED",
+                        "status_code": 200,
+                        "severity": "critical",
+                    }
+                    results.append(entry)
+                    vuln(f"[CRITICAL] {fn}", "Database export - FULL DATABASE EXPOSED")
+
+        verbose(f"DB exports: checked {len(filenames)} paths, {len(results)} found", self.args.verbose)
+        return results
