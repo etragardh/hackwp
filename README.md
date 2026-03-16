@@ -56,6 +56,40 @@ hwp -t http://target.com --exploit hwp-training/1.0.0-sqlinj --payload admin_use
 hwp -t http://target.com --scan
 ```
 
+## Scanner
+
+The built-in scanner fingerprints a WordPress target and checks for known vulnerabilities using the HackWP vulnerability database.
+
+```bash
+# Full scan (core, themes, plugins, users, security)
+hwp -t http://target.com --scan
+
+# Aggressive mode — probe all known plugin slugs from vuln DB
+hwp -t http://target.com --scan --aggressive 1
+
+# Very aggressive — probe all vuln DB slugs with HEAD+GET verification
+hwp -t http://target.com --scan --aggressive 2
+
+# Scan specific components only
+hwp -t http://target.com --scan --enumerate plugins,users
+```
+
+The scanner detects WordPress version, active theme and version, installed plugins with versions, enumerated users, and security misconfigurations including XML-RPC, debug.log exposure, open registration, directory listing, wp-cron, server headers, security headers, and robots.txt.
+
+Scan results are cached in `~/.hwp_cache/scans/` and automatically used by the interactive TUI for exploit matching.
+
+## Scan Intel in TUI
+
+When you scan a target and then open the interactive TUI, HWP cross-references scan results with available exploits. The TUI shows:
+
+- `« confirmed` (red) next to exploits that match a detected plugin/theme with a vulnerable version
+- `« possible` (yellow) next to exploits where the plugin/theme is present but version couldn't be confirmed
+- Confirmed and possible exploits are sorted to the top of the exploit list
+- Press **F2** to toggle scan filter — hides exploits that don't match the scan data
+- The description pane shows a **Scan Intel** section with WP version (green/red based on vulnerabilities), theme version, plugin count, enumerated users with IDs, and security findings
+
+This means you can scan a target, then immediately see which exploits are relevant without reading through the full list.
+
 ## Exploit Chaining
 
 ```bash
