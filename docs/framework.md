@@ -44,8 +44,8 @@ AUTH exploits run before everything else. They produce session cookies
 and/or credentials which are stored and passed to subsequent exploits.
 
 ```
-AUTH exploit runs → result.session → stored in ~/.hwp/
-                  → result.credentials → stored in ~/.hwp/
+AUTH exploit runs → result.session → stored in ~/.hackwp/sessions/
+                  → result.credentials → stored in ~/.hackwp/sessions/
                   → session cookies passed to HTTP instances
 ```
 
@@ -128,10 +128,10 @@ Session cookies are never sent unless `auth=True` is explicitly passed.
 
 ## Session Storage
 
-Sessions and credentials persist in `~/.hwp/{domain}/`:
+Sessions and credentials persist in `~/.hackwp/sessions/{domain}/`:
 
 ```
-~/.hwp/
+~/.hackwp/sessions/
   target.com/
     session.json      # cookie dict
     credentials.json  # {"username": ..., "password": ..., "role": ...}

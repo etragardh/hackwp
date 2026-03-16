@@ -76,7 +76,7 @@ hwp -t http://target.com --scan --enumerate plugins,users
 
 The scanner detects WordPress version, active theme and version, installed plugins with versions, enumerated users, and security misconfigurations including XML-RPC, debug.log exposure, open registration, directory listing, wp-cron, server headers, security headers, and robots.txt.
 
-Scan results are cached in `~/.hwp_cache/scans/` and automatically used by the interactive TUI for exploit matching.
+Scan results are cached in `~/.hackwp/scans/` and automatically used by the interactive TUI for exploit matching.
 
 ## Scan Intel in TUI
 
@@ -130,7 +130,7 @@ Templates are available at `exploits/template/` and `payloads/template/`.
 
 ## Session Management
 
-Sessions are stored in `~/.hwp/` and reused across runs:
+Sessions are stored in `~/.hackwp/sessions` and reused across runs:
 
 ```bash
 # Clear stored session for a target

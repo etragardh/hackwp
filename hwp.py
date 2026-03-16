@@ -122,7 +122,7 @@ def _save_scan_results(target, results):
     from pathlib import Path
     from urllib.parse import urlparse
 
-    cache_dir = Path.home() / ".hwp_cache" / "scans"
+    cache_dir = Path.home() / ".hackwp" / "scans"
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     # Use hostname as filename

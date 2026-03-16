@@ -46,7 +46,7 @@ from lib.payload import resolve_method
 
 # ─── Scan Data ────────────────────────────────────────────────────────
 
-SCAN_CACHE_DIR = Path.home() / ".hwp_cache" / "scans"
+SCAN_CACHE_DIR = Path.home() / ".hackwp" / "scans"
 
 
 def _load_scan_data(target: str) -> Optional[dict]:

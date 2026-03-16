@@ -17,7 +17,7 @@ from lib.output import section, found, notfound, info, warn, vuln, verbose, cons
 
 
 # Cache directory for vulnerability database
-CACHE_DIR = Path.home() / ".hwp_cache"
+CACHE_DIR = Path.home() / ".hackwp" / "vulndb"
 VULN_DB_FILE = CACHE_DIR / "vulnerabilities.json"
 WP_VERSIONS_FILE = CACHE_DIR / "wp_versions.json"
 DB_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
