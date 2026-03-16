@@ -75,7 +75,7 @@ class WebShell(Payload):
             if self.method == "RCE":
                 if r.output and "SHELL_DEPLOYED" in str(r.output):
                     self.success("Web shell deployed!")
-                    self.info(f"Open in browser: <target>/{self._rce_path}")
+                    self.info(f"Open in browser: {self.target}/{self._rce_path}")
                 else:
                     self.error("Web shell deployment failed")
 

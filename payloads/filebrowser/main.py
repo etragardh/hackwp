@@ -75,7 +75,7 @@ class FileBrowser(Payload):
             if self.method == "RCE":
                 if r.output and "FB_DEPLOYED" in str(r.output):
                     self.success("File browser deployed!")
-                    self.info(f"Open in browser: <target>/{self._rce_path}")
+                    self.info(f"Open in browser: {self.target}/{self._rce_path}")
                 else:
                     self.error("File browser deployment failed")
 

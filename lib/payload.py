@@ -30,7 +30,9 @@ class Payload:
     authors = []            # e.g. ["etragardh"]
     credits = []            # Special thanks
 
-    def __init__(self, options=None, verbose=False):
+    def __init__(self, target=None, domain=None, options=None, verbose=False):
+        self.target = target
+        self.domain = domain
         self.options = options or {}
         self.verbose = verbose
         self.method = None          # Set by framework before instructions()
