@@ -137,6 +137,12 @@ Sessions are stored in `~/.hwp/` and reused across runs:
 hwp -t target.com --clear-session
 ```
 
+## AI Contribution
+
+- v1.0 100% human
+- v2.0 100% human
+- v2.1 AI Assistance was used to upgrade the framework and exploits/payloads.
+
 ## License
 
 This project is licensed under the [GNU General Public License v3.0](LICENSE).
