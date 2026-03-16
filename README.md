@@ -139,4 +139,19 @@ hwp -t target.com --clear-session
 
 ## License
 
-Security testing tool by [@etragardh](https://github.com/etragardh). For authorized pentest and security testing only.
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
+
+Copyright (c) 2025 [@etragardh](https://github.com/etragardh)
+
+## Disclaimer
+
+This tool is provided for **authorized security testing and educational purposes only**.
+
+By using this software, you agree that:
+
+- You will only use it against systems you own or have explicit written permission to test
+- You are solely responsible for your actions and any consequences of using this tool
+- The author(s) accept no liability for misuse, damage, or any illegal activity performed with this software
+- Unauthorized access to computer systems is illegal in most jurisdictions and may result in criminal prosecution
+
+If you do not have authorization to test a target, **do not use this tool against it**.
