@@ -17,7 +17,7 @@ import sys
 from urllib.parse import urlparse
 
 # Project root
-_ROOT = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(os.path.realpath(__file__))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
