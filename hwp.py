@@ -5,7 +5,7 @@ WordPress Security Training Tool
 
 Usage:
     hwp -t <target> --exploit <exploit> [exploit ...] --payload <payload> [options]
-    hwp -t <target> --scan [--aggressive] [--enumerate plugins,users]
+    hwp -t <target> --scan [-a | -aa] [--enumerate plugins,users]
     hwp --list-exploits
     hwp --list-payloads
     hwp -i
@@ -59,6 +59,8 @@ def parse_args():
                         help="Interactive mode — TUI exploit builder")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Verbose output (-v verbose, -vv very verbose)")
+    parser.add_argument("-a", "--aggressive", action="count", default=0,
+                        help="Scanner aggressiveness (-a popular plugins, -aa vuln DB)")
     parser.add_argument("--cookie", help="Inject session cookie string")
     parser.add_argument("--clear-session", action="store_true",
                         help="Clear stored session for target")
@@ -147,7 +149,7 @@ def cmd_scan(args, options):
     # Build a scanner args namespace from hwp args + extra options
     scan_args = argparse.Namespace(
         target=target,
-        aggressive=int(options.get("aggressive", options.get("a", 0))),
+        aggressive=args.aggressive,
         concurrency=int(options.get("concurrency", options.get("c", 10))),
         timeout=float(options.get("timeout", 10.0)),
         user_agent=options.get("user-agent",

@@ -141,6 +141,37 @@ The framework loads stored auth at the start of every chain execution.
 CLI `--cookie` and `--user`/`--pass` override stored values.
 `--clear-session` wipes stored data for a target.
 
+## Scanner
+
+The scanner runs as `hwp -t <target> --scan` and enumerates core, themes, plugins, users, and security misconfigurations.
+
+### Aggressiveness Levels
+
+| Flag | Level | What it does |
+|------|-------|-------------|
+| (none) | 0 | Passive — crawl site HTML + REST API namespaces for plugins |
+| `-a` | 1 | + Probe 1,500 popular plugin slugs (HEAD then GET readme) |
+| `-aa` | 2 | + Probe all plugin slugs from the vulnerability database |
+
+Each level includes everything from the previous levels. HEAD requests are used first to find candidates, then GET requests verify and extract versions.
+
+### Storage
+
+All scanner data is stored under `~/.hackwp/`:
+
+```
+~/.hackwp/
+├── sessions/           # Per-domain session cookies and credentials
+├── scans/              # Scan results per hostname (JSON)
+└── vulndb/             # Downloaded vulnerability databases
+    ├── vulnerabilities.json
+    └── wp_versions.json
+```
+
+### Scan Intel
+
+Scan results are automatically loaded by the TUI when the target hostname matches a cached scan. The TUI cross-references exploits against scan data to show `confirmed` or `possible` markers on matching exploits. Press **F2** to filter the exploit list to only show matches.
+
 ## Project Structure
 
 ```
@@ -157,6 +188,7 @@ hwp/
 │   ├── output.py           # Colored terminal output
 │   ├── payload.py          # Payload base class
 │   ├── result.py           # Result class with field validation
+│   ├── rfi_server.py       # Temporary HTTP server for RFI fallback
 │   ├── store.py            # Session/credential persistence
 │   └── version.py          # Version range parsing
 ├── exploits/               # Exploit modules

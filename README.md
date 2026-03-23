@@ -64,11 +64,11 @@ The built-in scanner fingerprints a WordPress target and checks for known vulner
 # Full scan (core, themes, plugins, users, security)
 hwp -t http://target.com --scan
 
-# Aggressive mode — probe all known plugin slugs from vuln DB
-hwp -t http://target.com --scan --aggressive 1
+# Aggressive mode — probe 1500 popular plugin slugs
+hwp -t http://target.com --scan -a
 
-# Very aggressive — probe all vuln DB slugs with HEAD+GET verification
-hwp -t http://target.com --scan --aggressive 2
+# Very aggressive — probe all plugin slugs from the vuln DB
+hwp -t http://target.com --scan -aa
 
 # Scan specific components only
 hwp -t http://target.com --scan --enumerate plugins,users
