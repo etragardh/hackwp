@@ -7,6 +7,12 @@ Payloads generate instructions for exploits to deliver.
 from lib import output
 from lib.http import HTTP
 
+import base64
+import hashlib
+import random
+import string
+from urllib.parse import quote, unquote
+
 
 # Same aliases as exploit
 _ALIASES = {
@@ -45,6 +51,38 @@ class Payload:
     def report(self, results):
         """Optional override: called after all instructions executed. Use self.method."""
         pass
+
+    # ── Helpers for students ──────────────────────────────────────────
+
+    def b64e(self, s):
+        """Base64 encode a string."""
+        if isinstance(s, str):
+            s = s.encode()
+        return base64.b64encode(s).decode()
+
+    def b64d(self, s):
+        """Base64 decode a string."""
+        if isinstance(s, str):
+            s = s.encode()
+        return base64.b64decode(s).decode()
+
+    def url_encode(self, s):
+        """URL encode a string."""
+        return quote(str(s))
+
+    def url_decode(self, s):
+        """URL decode a string."""
+        return unquote(str(s))
+
+    def md5(self, s):
+        """MD5 hash a string."""
+        if isinstance(s, str):
+            s = s.encode()
+        return hashlib.md5(s).hexdigest()
+
+    def rand(self, n=8):
+        """Random alphanumeric string."""
+        return ''.join(random.choices(string.ascii_lowercase + string.digits, k=n))
 
     # Output helpers
     info = staticmethod(output.info)
