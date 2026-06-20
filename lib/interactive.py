@@ -36,12 +36,52 @@ from textual.binding import Binding
 from textual.containers import Grid, Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import (
-    Button, Footer, Input, Label, RichLog, SelectionList, Static,
+    Button, Checkbox, Footer, Input, Label, RichLog, SelectionList, Static,
 )
+
+
+class AdapterCheckbox(Checkbox):
+    """Checkbox rendered as [ ] / [X] with always-visible brackets.
+
+    Textual's default checkbox shows a faint inner glyph even when off
+    (low-contrast on dark backgrounds). This overrides render() to draw an
+    explicit ASCII box: '[ ]' when off, '[X]' (green) when on, followed by
+    the label — so the box is always visible and the X only appears when set.
+    """
+
+    def render(self):
+        from textual.content import Content
+
+        checked = bool(self.value)
+        inner = "X" if checked else " "
+        # Content.assemble takes (text, style_string) tuples — not Style objects.
+        box_style = "#00cc00 bold" if checked else "#666666"
+        label_text = str(self.label)
+
+        return Content.assemble(
+            ("[" + inner + "] ", box_style),
+            label_text,
+        )
 
 from lib.loader import load_exploit, load_payload, list_exploits, list_payloads
 from lib.exploit import resolve_capability
 from lib.payload import resolve_method
+from lib.version_info import HWP_VERSION
+
+
+# ─── Banner art (shared) ──────────────────────────────────────────────
+
+def _banner_art() -> str:
+    """Braille hackwp logo with the current framework version baked in."""
+    return (
+        "⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀\n"
+        "⣿⡿⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠻⢿⡵\n"
+        "⣿⡇⠀⠀⠉⠛⠛⣿⣿⠛⠛⠉⠀⠀⣿⡇  » hackwp «\n"
+        "⣿⣿⣀⠀⢀⣠⣴⡇⠹⣦⣄⡀⠀⣠⣿⡇    by @etragardh\n"
+        "⠋⠻⠿⠿⣟⣿⣿⣦⣤⣼⣿⣿⠿⠿⠟⠀\n"
+        f"⠀   ⠸⡿⣿⣿⢿⡿⢿⠇⠀ v{HWP_VERSION}\n"
+        "⠀⠀⠀⠀⠀⠀⠈⠁⠈⠁"
+    )
 
 
 # ─── Scan Data ────────────────────────────────────────────────────────
@@ -283,6 +323,23 @@ SelectionList {
 }
 
 /* ── Checkbox styling ── */
+
+/* AdapterCheckbox draws its own [ ] / [X] glyph in render(); here we just
+   strip the default border/background/padding so it sits flush as one row. */
+AdapterCheckbox {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    height: 1;
+    color: $text;
+}
+
+AdapterCheckbox:focus {
+    background: transparent;
+    text-style: none;
+}
+
 SelectionList > .selection-list--button {
     background: #333333;
     color: #333333;
@@ -499,15 +556,7 @@ class ResultsScreen(Screen):
         Binding("escape", "go_back", "Back", show=True),
     ]
 
-    BANNER_ART = (
-        "⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀\n"
-        "⣿⡿⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠻⢿⡵\n"
-        "⣿⡇⠀⠀⠉⠛⠛⣿⣿⠛⠛⠉⠀⠀⣿⡇  » hackwp «\n"
-        "⣿⣿⣀⠀⢀⣠⣴⡇⠹⣦⣄⡀⠀⣠⣿⡇    by @etragardh\n"
-        "⠋⠻⠿⠿⣟⣿⣿⣦⣤⣼⣿⣿⠿⠿⠟⠀\n"
-        "⠀   ⠸⡿⣿⣿⢿⡿⢿⠇⠀ v2.0\n"
-        "⠀⠀⠀⠀⠀⠀⠈⠁⠈⠁"
-    )
+    BANNER_ART = _banner_art()
 
     def __init__(self, cmd_parts: list, cmd_display=None):
         super().__init__()
@@ -659,6 +708,9 @@ class HWPApp(App):
         self.rhost = "localhost"
         self.rport = "80"
 
+        # XSS→RCE adapter (core feature, toggled when an XSS exploit is selected)
+        self.xss_adapter_enabled = False
+
         # Scan integration
         self.scan_data: Optional[dict] = None
         self.scan_filter_active = False
@@ -744,6 +796,17 @@ class HWPApp(App):
             return (self.selected_payload_ref, self.payload_catalog[self.selected_payload_ref])
         return None
 
+    def has_xss_exploit(self) -> bool:
+        """True if any selected exploit is a stored-XSS sink (capability XSS)."""
+        for _, cls in self.selected_exploits():
+            if resolve_capability(cls.capability) == "XSS":
+                return True
+        return False
+
+    def adapter_active(self) -> bool:
+        """True if the XSS→RCE adapter is enabled AND applicable."""
+        return self.xss_adapter_enabled and self.has_xss_exploit()
+
     def allowed_payload_caps(self) -> Optional[Set[str]]:
         """Capabilities the selected exploits can deliver to payloads."""
         exploits = self.selected_exploits()
@@ -756,6 +819,9 @@ class HWPApp(App):
             # RFI/SSRF exploits can also use AFU payloads (via server fallback)
             if cap in ("RFI", "SSRF"):
                 caps.add("AFU")
+            # XSS exploit + adapter enabled → RCE payloads become available
+            if cap == "XSS" and self.xss_adapter_enabled:
+                caps.add("RCE")
         return caps
 
     def matched_method(self) -> Optional[str]:
@@ -796,19 +862,18 @@ class HWPApp(App):
             if cap in ("RFI", "SSRF") and "AFU" in payload_methods:
                 return i, "AFU", True
 
+        # XSS→RCE adapter: XSS exploit + RCE payload (adapter bridges them)
+        if self.xss_adapter_enabled and "RCE" in payload_methods:
+            for i in range(len(chain_exploits) - 1, -1, -1):
+                cap = resolve_capability(chain_exploits[i][1].capability)
+                if cap == "XSS":
+                    return i, "RCE", False
+
         return None, None, False
 
     # ── Layout ────────────────────────────────────────────────────────
 
-    BANNER_ART = (
-        "⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀\n"
-        "⣿⡿⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠻⢿⡵\n"
-        "⣿⡇⠀⠀⠉⠛⠛⣿⣿⠛⠛⠉⠀⠀⣿⡇  » hackwp «\n"
-        "⣿⣿⣀⠀⢀⣠⣴⡇⠹⣦⣄⡀⠀⣠⣿⡇    by @etragardh\n"
-        "⠋⠻⠿⠿⣟⣿⣿⣦⣤⣼⣿⣿⠿⠿⠟⠀\n"
-        "⠀   ⠸⡿⣿⣿⢿⡿⢿⠇⠀ v2.0\n"
-        "⠀⠀⠀⠀⠀⠀⠈⠁⠈⠁"
-    )
+    BANNER_ART = _banner_art()
 
     def compose(self) -> ComposeResult:
         # Banner (top — art + live pipeline status)
@@ -1034,7 +1099,8 @@ class HWPApp(App):
         rfi_server = self.needs_rfi_server()
         exploit_refs = tuple(sorted(self.selected_exploit_refs))
         payload_ref = self.selected_payload_ref or ""
-        args_key = f"{exploit_refs}|{payload_ref}|{method}|{rfi_server}"
+        xss_avail = self.has_xss_exploit()
+        args_key = f"{exploit_refs}|{payload_ref}|{method}|{rfi_server}|{xss_avail}|{self.xss_adapter_enabled}"
         if args_key == self._last_args_key:
             return
         self._last_args_key = args_key
@@ -1050,7 +1116,10 @@ class HWPApp(App):
 
         for ref, cls in self.selected_exploits():
             opts = getattr(cls, "options", None) or []
-            if opts:
+            is_xss = resolve_capability(cls.capability) == "XSS"
+            # Render an exploit column if it has options OR it's an XSS exploit
+            # (the XSS column hosts the XSS→RCE adapter toggle even with no opts).
+            if opts or is_xss:
                 short_ref = ref.split("/")[-1] if "/" in ref else ref
                 cols.append((short_ref, "exploit", ref, opts))
 
@@ -1140,6 +1209,41 @@ class HWPApp(App):
                     placeholder=placeholder,
                 ))
 
+            # XSS→RCE adapter — rendered inside the XSS exploit's own column.
+            # Shown whenever this column belongs to an XSS exploit, even if the
+            # exploit has no other options. Toggling re-enables RCE payloads.
+            if scope == "exploit":
+                ecls = self.exploit_catalog.get(scope_id)
+                if ecls and resolve_capability(ecls.capability) == "XSS":
+                    col.mount(Static(""))
+                    col.mount(AdapterCheckbox(
+                        "Enable XSS→RCE adapter",
+                        value=self.xss_adapter_enabled,
+                        id="chk-xss-adapter",
+                    ))
+
+                    # Beacon LHOST/LPORT only matter once the adapter is on.
+                    # Keys stay in the "main" scope so chain.py reads them as
+                    # --lhost/--lport (the beacon's reachable address).
+                    if self.xss_adapter_enabled:
+                        bhost_key = ("main", "main", "lhost")
+                        bport_key = ("main", "main", "lport")
+                        bhost_wid = f"arg-{self._arg_gen}-main-lhost"
+                        bport_wid = f"arg-{self._arg_gen}-main-lport"
+                        self._input_id_to_argref[bhost_wid] = bhost_key
+                        self._input_id_to_argref[bport_wid] = bport_key
+
+                        self._mount_arg_row(col, "LHOST", Input(
+                            value=self.arg_values.get(bhost_key, ""),
+                            id=bhost_wid,
+                            placeholder="Beacon IP (optional — confirms server-side RCE)",
+                        ))
+                        self._mount_arg_row(col, "LPORT", Input(
+                            value=self.arg_values.get(bport_key, ""),
+                            id=bport_wid,
+                            placeholder="Beacon port (default: 8888)",
+                        ))
+
         valid_refs = set(self._input_id_to_argref.values())
         self.arg_values = {k: v for k, v in self.arg_values.items() if k in valid_refs}
 
@@ -1173,6 +1277,13 @@ class HWPApp(App):
         t.append(")", style="cyan")
 
         t.append(" > ", style="green")
+
+        # Show the core XSS→RCE adapter stage when active
+        if self.adapter_active():
+            t.append("adapter(", style="cyan")
+            t.append("xss→rce", style="bold magenta")
+            t.append(")", style="cyan")
+            t.append(" > ", style="green")
 
         t.append("payload(", style="cyan")
         if payload_ref:
@@ -1354,6 +1465,9 @@ class HWPApp(App):
         if self.selected_payload_ref:
             parts += ["--payload", self.selected_payload_ref]
 
+        if self.adapter_active():
+            parts.append("--xss-rce-adapter")
+
         used_flags = set()
         for wid, ref in self._input_id_to_argref.items():
             scope, scope_id, arg_key = ref
@@ -1426,6 +1540,18 @@ class HWPApp(App):
 
     # ── Event Handlers ────────────────────────────────────────────────
 
+    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
+        """Handle the XSS→RCE adapter toggle."""
+        if event.checkbox.id == "chk-xss-adapter":
+            self.xss_adapter_enabled = event.value
+            # Re-evaluate payload availability (RCE payloads un-gray), the
+            # chain preview, the args grid (beacon fields appear), and command.
+            self._populate_payload_list()
+            self._rebuild_args()
+            self._refresh_plan()
+            self._refresh_description()
+            self._refresh_cmd_preview()
+
     def on_input_changed(self, event: Input.Changed) -> None:
         """Route all input changes by widget ID."""
         wid = event.input.id or ""
@@ -1468,6 +1594,10 @@ class HWPApp(App):
 
         if list_id == "exploit-list":
             self.selected_exploit_refs = set(event.selection_list.selected)
+            # If no XSS exploit remains selected, the adapter can't apply —
+            # turn it off so RCE payloads re-gray correctly.
+            if self.xss_adapter_enabled and not self.has_xss_exploit():
+                self.xss_adapter_enabled = False
             # Invalidate payload cache since allowed caps may have changed
             self._last_payload_key = ""
             self._populate_payload_list()
@@ -1573,6 +1703,9 @@ class HWPApp(App):
         ]
         cmd_parts.extend(sorted(self.selected_exploit_refs))
         cmd_parts += ["--payload", self.selected_payload_ref]
+
+        if self.adapter_active():
+            cmd_parts.append("--xss-rce-adapter")
 
         used_flags = set()
         for wid, ref_key in self._input_id_to_argref.items():

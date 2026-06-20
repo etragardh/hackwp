@@ -10,14 +10,16 @@ from rich.text import Text
 
 console = Console(highlight=False)
 
+from lib.version_info import HWP_VERSION
+
 BANNER_ART = """\
   ⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀
   ⣿⡿⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠻⢿⡵
   ⣿⡇⠀⠀⠉⠛⠛⣿⣿⠛⠛⠉⠀⠀⣿⡇  » hackwp «
   ⣿⣿⣀⠀⢀⣠⣴⡇⠹⣦⣄⡀⠀⣠⣿⡇    by @etragardh
   ⠋⠻⠿⠿⣟⣿⣿⣦⣤⣼⣿⣿⠿⠿⠟⠀
-  ⠀   ⠸⡿⣿⣿⢿⡿⢿⠇⠀ v2.0⠀⠀⠀
-  ⠀⠀⠀⠀⠀⠀⠈⠁⠈⠁⠀⠀⠀⠀⠀⠀"""
+  ⠀   ⠸⡿⣿⣿⢿⡿⢿⠇⠀ v{ver}⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠈⠁⠈⠁⠀⠀⠀⠀⠀⠀""".format(ver=HWP_VERSION)
 
 
 def banner():

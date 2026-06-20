@@ -24,6 +24,7 @@ if _ROOT not in sys.path:
 from lib.output import banner, section, info, warn, error, success, print_table
 from lib.loader import load_exploit, load_payload, list_exploits, list_payloads
 from lib.chain import run_chain
+from lib.version_info import HWP_VERSION
 
 
 EXPLOITS_DIR = os.path.join(_ROOT, "exploits")
@@ -45,7 +46,7 @@ def parse_args():
     """Parse known args; unknown args become options dict."""
     parser = argparse.ArgumentParser(
         prog="hwp",
-        description="HWP — HackWP Framework v2",
+        description=f"HWP — HackWP Framework v{HWP_VERSION}",
     )
     parser.add_argument("-t", "--target", help="Target URL or domain")
     parser.add_argument("--exploit", nargs="+", metavar="EXPLOIT",
@@ -62,6 +63,10 @@ def parse_args():
     parser.add_argument("-a", "--aggressive", action="count", default=0,
                         help="Scanner aggressiveness (-a popular plugins, -aa vuln DB)")
     parser.add_argument("--cookie", help="Inject session cookie string")
+    parser.add_argument("--xss-rce-adapter", action="store_true",
+                        help="Enable core XSS→RCE adapter (drops RCE payload via stored XSS)")
+    parser.add_argument("--adapter-debug", action="store_true",
+                        help="Stream XSS→RCE adapter JS telemetry to the beacon listener (/dbg)")
     parser.add_argument("--clear-session", action="store_true",
                         help="Clear stored session for target")
     parser.add_argument("--no-banner", action="store_true",
@@ -84,6 +89,14 @@ def parse_args():
                 i += 1
         else:
             i += 1
+
+    # Surface known flags that chain.py reads from the options dict
+    if getattr(args, "xss_rce_adapter", False):
+        options["xss-rce-adapter"] = True
+    if getattr(args, "adapter_debug", False):
+        options["adapter-debug"] = True
+    if getattr(args, "cookie", None):
+        options["cookie"] = args.cookie
 
     return args, options
 
