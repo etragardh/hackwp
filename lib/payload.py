@@ -14,12 +14,9 @@ import string
 from urllib.parse import quote, unquote
 
 
-# Same aliases as exploit
-_ALIASES = {
-    "RCEp": "RCE",
-    "CODEINJp": "CODEINJ",
-    "XSSs": "XSS",
-}
+# No active aliases (kept as a no-op passthrough so call sites don't change).
+# Mirrors lib/exploit.py._ALIASES.
+_ALIASES = {}
 
 
 def resolve_method(method):

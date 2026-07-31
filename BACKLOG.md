@@ -35,3 +35,21 @@ common "give me a SELECT, get the value back" contract yet. Two ways forward:
 
 Recommended: ship (1) to unblock usage, then evolve toward (2) via a shared
 extractor helper on the `Exploit` base class.
+
+## Missing `hwp-training` examples
+
+The training target is where people learn, but 4 canonical capabilities have no
+`hwp-training/` example: **`SQLIq`, `AFD`, `FILEDL`, `PRIVESC`**. Each needs a
+matching endpoint on the training-target plugin (external to this repo), so add
+the plugin endpoint and the exploit together:
+
+- `SQLIq` — an endpoint with a UNION/blind read injection (pairs with the sample
+  SQLIq payload above).
+- `FILEDL` — an endpoint that streams an arbitrary file by path (pairs with
+  `file_read`).
+- `AFD` — an endpoint that deletes/modifies a file by path.
+- `PRIVESC` — an endpoint that raises the current low-priv user's role (demonstrates
+  `requires_role` → `grants_role`, and an `AUTH → PRIVESC → delivery` chain).
+
+Don't add exploits that hit non-existent endpoints — they'd load fine but fail at
+runtime and mislead learners.
