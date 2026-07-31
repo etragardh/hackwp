@@ -177,6 +177,16 @@ This also means you can run yesterday's AUTH result today with just a payload: t
 session persists in `~/.hackwp/sessions/`, so `--payload … --auth-rce-adapter`
 picks it up with no AUTH exploit in the chain.
 
+## XSSr Handling (display-only)
+
+Reflected XSS delivers nothing to the chain — it fires in the victim's browser.
+So an `XSSr` exploit only **builds a crafted URL** and returns it in `result.url`;
+it makes no request. When the delivery capability resolves to `XSSr`, `chain.py`
+prints the URL and copies it (`output.xssr_url` → OSC-52) instead of running the
+normal report/beacon path. The TUI captures the URL from the streamed output and
+enables a "Copy XSSr URL" button. The operator pastes the URL into a browser (as
+the victim) to trigger the JS.
+
 ## Auth Phase (AUTH → PRIVESC)
 
 Two capabilities run in the auth phase, before any delivery exploit and without a

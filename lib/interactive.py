@@ -567,6 +567,8 @@ class ResultsScreen(Screen):
         self.cmd_display = cmd_display  # Rich Text object or None
         self._process = None
         self._running = False
+        self._xssr_url = None       # crafted reflected-XSS URL captured from output
+        self._expect_url = False
 
     def compose(self) -> ComposeResult:
         with Vertical(id="results-banner-box"):
@@ -578,6 +580,7 @@ class ResultsScreen(Screen):
         with Horizontal(id="results-controls"):
             yield Button("◂ Back", id="btn-back")
             yield Button("↻ Re-run", id="btn-rerun")
+            yield Button("⎘ Copy XSSr URL", id="btn-copy-url", disabled=True)
             yield Button("Quit", id="btn-quit")
 
         yield Footer()
@@ -606,6 +609,12 @@ class ResultsScreen(Screen):
         """Async worker that runs the subprocess and streams output."""
         log = self.query_one("#results-log", RichLog)
         status = self.query_one("#results-status", Static)
+        self._xssr_url = None
+        self._expect_url = False
+        try:
+            self.query_one("#btn-copy-url", Button).disabled = True
+        except Exception:
+            pass
 
         try:
             self._process = await asyncio.create_subprocess_exec(
@@ -619,6 +628,19 @@ class ResultsScreen(Screen):
                 decoded = line.decode("utf-8", errors="replace").rstrip("\n\r")
                 # Convert ANSI escape codes to Rich Text for proper color rendering
                 log.write(Text.from_ansi(decoded))
+                # Capture a crafted reflected-XSS URL for the Copy button.
+                clean = re.sub(r"\x1b\[[0-9;]*m", "", decoded)
+                if "Reflected XSS" in clean and "paste into a browser" in clean:
+                    self._expect_url = True
+                elif self._expect_url:
+                    m = re.search(r"https?://\S+", clean)
+                    if m:
+                        self._xssr_url = m.group(0)
+                        self._expect_url = False
+                        try:
+                            self.query_one("#btn-copy-url", Button).disabled = False
+                        except Exception:
+                            pass
 
             await self._process.wait()
             rc = self._process.returncode
@@ -645,6 +667,13 @@ class ResultsScreen(Screen):
             log = self.query_one("#results-log", RichLog)
             log.clear()
             self.on_mount()
+        elif event.button.id == "btn-copy-url":
+            if self._xssr_url:
+                try:
+                    self.app.copy_to_clipboard(self._xssr_url)
+                    self.notify("Reflected-XSS URL copied to clipboard", timeout=4)
+                except Exception:
+                    self.notify(self._xssr_url, title="Copy this URL", timeout=8)
         elif event.button.id == "btn-quit":
             self.action_quit_app()
 

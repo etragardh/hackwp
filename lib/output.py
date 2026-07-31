@@ -3,6 +3,9 @@ Output and display utilities.
 Consistent with WPScanX UI style using rich.
 """
 
+import base64
+import sys
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -76,6 +79,39 @@ def chain_info(msg: str, detail: str = ""):
         console.print(f"  [magenta]▶[/magenta]  {msg} [bold magenta]{detail}[/bold magenta]")
     else:
         console.print(f"  [magenta]▶[/magenta]  {msg}")
+
+
+def copy_to_clipboard(text: str) -> bool:
+    """Copy text to the terminal clipboard via the OSC-52 escape sequence.
+
+    Works in most modern terminals (iTerm2, kitty, wezterm, tmux with the
+    right setting, …). Returns True if the sequence was emitted; the caller
+    always prints the text too, so an unsupported terminal loses nothing.
+    """
+    try:
+        b64 = base64.b64encode(text.encode()).decode()
+        sys.stdout.write(f"\033]52;c;{b64}\a")
+        sys.stdout.flush()
+        return True
+    except Exception:
+        return False
+
+
+def xssr_url(url: str, message: str = ""):
+    """Display a reflected-XSS crafted URL for the operator to open in a browser.
+
+    Reflected XSS fires in the victim's browser, so the framework never
+    requests the URL — it prints it and copies it to the clipboard (OSC-52) for
+    the operator to paste into a browser (as the victim). The URL is printed
+    unwrapped on its own line so the TUI can capture it for a Copy button.
+    """
+    console.print()
+    console.print("  [bold magenta]⚡ Reflected XSS — paste into a browser as the victim:[/bold magenta]")
+    console.print(Text("  " + url, style="bold cyan"), soft_wrap=True)
+    if copy_to_clipboard(url):
+        console.print("  [dim]ℹ  copied to clipboard[/dim]")
+    if message:
+        console.print(f"  [dim]ℹ  {message}[/dim]")
 
 
 def print_table(title: str, rows: list[tuple[str, str]], style: str = "cyan"):

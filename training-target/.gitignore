@@ -1,0 +1,21 @@
+# Environment (contains credentials)
+.env
+
+# Docker volumes (data is ephemeral)
+db_data/
+wp_data/
+
+# WordPress core — the official wordpress image auto-populates ./html on the
+# first `docker compose up`. Only the mu-plugin, compose, setup.sh and config
+# are the actual training content, so the core is not tracked (avoids bloat).
+html/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

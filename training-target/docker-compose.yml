@@ -1,0 +1,109 @@
+version: "3.8"
+
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  HWP Training Target — Isolated Security Training Lab          ║
+# ║  DO NOT EXPOSE TO THE INTERNET                                 ║
+# ║  FOR AUTHORIZED SECURITY TRAINING ONLY                         ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+services:
+
+  # ── WordPress ──────────────────────────────────────────────────
+  wordpress:
+    image: wordpress:6.7-php8.2-apache
+    container_name: hwp-wordpress
+    restart: unless-stopped
+    ports:
+      # Loopback-only: this instance is intentionally vulnerable — never expose it.
+      - "127.0.0.1:${WP_PORT:-80}:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME:-wordpress}
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD:-wordpress}
+      WORDPRESS_TABLE_PREFIX: wp_
+      WORDPRESS_DEBUG: "1"
+    volumes:
+      - ./html:/var/www/html
+      - ./mu-plugins/hwp-training-target.php:/var/www/html/wp-content/mu-plugins/hwp-training-target.php:ro
+      - ./mu-plugins/hwp-training-target:/var/www/html/wp-content/mu-plugins/hwp-training-target
+      - ./config/php.ini:/usr/local/etc/php/conf.d/hwp-training.ini:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - hwp-net
+
+  # ── MariaDB ────────────────────────────────────────────────────
+  db:
+    image: mariadb:11.4
+    container_name: hwp-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-rootpass}
+      MARIADB_DATABASE: ${WORDPRESS_DB_NAME:-wordpress}
+      MARIADB_USER: ${WORDPRESS_DB_USER:-wordpress}
+      MARIADB_PASSWORD: ${WORDPRESS_DB_PASSWORD:-wordpress}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - hwp-net
+
+  # ── WP-CLI (setup runner) ─────────────────────────────────────
+  wpcli:
+    image: wordpress:cli-2.11-php8.2
+    container_name: hwp-wpcli
+    depends_on:
+      wordpress:
+        condition: service_started
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME:-wordpress}
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD:-wordpress}
+      WP_URL: ${WP_URL:-http://localhost}
+      WP_ADMIN_USER: ${WP_ADMIN_USER:-admin}
+      WP_ADMIN_PASSWORD: ${WP_ADMIN_PASSWORD:-admin}
+      WP_ADMIN_EMAIL: ${WP_ADMIN_EMAIL:-admin@hwp-training.local}
+    volumes:
+      # Same core the wordpress container serves, so setup.sh configures the live site.
+      - ./html:/var/www/html
+      - ./setup.sh:/usr/local/bin/setup.sh:ro
+    entrypoint: /bin/sh
+    command: /usr/local/bin/setup.sh
+    networks:
+      - hwp-net
+
+  # ── phpMyAdmin ─────────────────────────────────────────────────
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: hwp-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PMA_PORT:-8080}:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${MARIADB_ROOT_PASSWORD:-rootpass}
+      UPLOAD_LIMIT: 64M
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - hwp-net
+
+volumes:
+  db_data:
+
+networks:
+  hwp-net:
+    driver: bridge
+    internal: false

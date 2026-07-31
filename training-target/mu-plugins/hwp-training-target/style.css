@@ -1,0 +1,27 @@
+/**
+ * HWP Training Target — Frontend Stylesheet
+ * Version: 1.0.0
+ *
+ * This file exists so that WPScanX can detect the plugin via its
+ * enqueued stylesheet URL:
+ *   /wp-content/mu-plugins/hwp-training-target/style.css?ver=1.0.0
+ */
+
+.hwp-xss-output {
+    /* Container for stored XSS output — intentionally unstyled */
+}
+
+.hwp-training-notice {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #1a1a2e;
+    color: #e94560;
+    text-align: center;
+    padding: 8px;
+    font-family: monospace;
+    font-size: 12px;
+    z-index: 99999;
+    border-top: 2px solid #e94560;
+}

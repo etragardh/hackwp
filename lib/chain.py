@@ -128,7 +128,7 @@ def _wp_login(target, credentials, verbose=0):
         return None
 
     # WordPress sets cookies on successful login and redirects (302)
-    cookies = dict(resp.cookies)
+    cookies = {c.name: c.value for c in resp.cookies}
 
     # Check for wordpress_logged_in cookie
     has_auth = any(k.startswith("wordpress_logged_in") for k in cookies)
@@ -337,6 +337,8 @@ def run_chain(exploit_classes, payload_class, target, domain, options, verbose=0
         if result.credentials:
             credentials = result.credentials
             store.save_credentials(domain, credentials)
+        if result.message:
+            output.success(result.message)
 
     # ── Phase 3.5: Credentials → Session bridge ──────────────────────
     # If we have credentials but no session cookies, attempt wp-login.php so
@@ -359,6 +361,8 @@ def run_chain(exploit_classes, payload_class, target, domain, options, verbose=0
         )
         _dump_result(result, verbose)
         if not result.success:
+            if result.message:
+                output.error(result.message)
             return []
         if result.session:
             session_cookies = result.session
@@ -366,6 +370,8 @@ def run_chain(exploit_classes, payload_class, target, domain, options, verbose=0
         if result.credentials:
             credentials = result.credentials
             store.save_credentials(domain, credentials)
+        if result.message:
+            output.success(result.message)
 
     # ── Phase 5: Auth-phase-only run (no delivery exploits) ───────────
     if not chain_exploits:
@@ -531,6 +537,22 @@ def run_chain(exploit_classes, payload_class, target, domain, options, verbose=0
                 store.save_session(domain, result.session)
             if result.credentials:
                 store.save_credentials(domain, result.credentials)
+
+        # XSSr is display-only: reflected XSS fires in the victim's browser, so
+        # the framework shows the crafted URL(s) and copies them — it never
+        # requests the target. The exploit only builds the URL (result.url).
+        if "XSSr" in resolve_capabilities(delivery_cls.capability):
+            for r in all_results:
+                if r.success and r.url:
+                    output.xssr_url(r.url, r.message or "")
+        elif payload_class is None:
+            # No payload (e.g. SQLIq/AFD/OTHER run standalone): surface the
+            # delivery result so the operator actually sees what it produced.
+            for r in all_results:
+                if r.message:
+                    output.info(r.message)
+                if r.output:
+                    print(r.output)
 
         # Post-execution — payload handles its own output
         if payload_class and matched_method:
