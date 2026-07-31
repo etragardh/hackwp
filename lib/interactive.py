@@ -64,7 +64,10 @@ class AdapterCheckbox(Checkbox):
         )
 
 from lib.loader import load_exploit, load_payload, list_exploits, list_payloads
-from lib.exploit import resolve_capability
+from lib.exploit import (
+    resolve_capability, resolve_capabilities, requires_auth,
+    normalize_requires_role, AUTH_CAPABILITIES,
+)
 from lib.payload import resolve_method
 from lib.version_info import HWP_VERSION
 
@@ -799,7 +802,7 @@ class HWPApp(App):
     def has_xss_exploit(self) -> bool:
         """True if any selected exploit is a stored-XSS sink (capability XSS)."""
         for _, cls in self.selected_exploits():
-            if resolve_capability(cls.capability) == "XSS":
+            if "XSS" in resolve_capabilities(cls.capability):
                 return True
         return False
 
@@ -814,14 +817,14 @@ class HWPApp(App):
             return None
         caps = set()
         for _, cls in exploits:
-            cap = resolve_capability(cls.capability)
-            caps.add(cap)
-            # RFI/SSRF exploits can also use AFU payloads (via server fallback)
-            if cap in ("RFI", "SSRF"):
-                caps.add("AFU")
-            # XSS exploit + adapter enabled → RCE payloads become available
-            if cap == "XSS" and self.xss_adapter_enabled:
-                caps.add("RCE")
+            for cap in resolve_capabilities(cls.capability):
+                caps.add(cap)
+                # RFI exploits can also use AFU payloads (via server fallback)
+                if cap == "RFI":
+                    caps.add("AFU")
+                # XSS exploit + adapter enabled → RCE payloads become available
+                if cap == "XSS" and self.xss_adapter_enabled:
+                    caps.add("RCE")
         return caps
 
     def matched_method(self) -> Optional[str]:
@@ -843,30 +846,29 @@ class HWPApp(App):
         payload_methods = [resolve_method(m) for m in pcls.methods]
 
         exploits = self.selected_exploits()
+        # AUTH/PRIVESC run in the auth phase and never carry a payload.
         chain_exploits = [
             (ref, cls) for ref, cls in exploits
-            if resolve_capability(cls.capability) != "AUTH"
+            if not (set(resolve_capabilities(cls.capability)) & AUTH_CAPABILITIES)
         ]
         if not chain_exploits:
             return None, None, False
 
-        # Direct match first
+        # Direct match first (multi-capability exploits match on any of their caps)
         for i in range(len(chain_exploits) - 1, -1, -1):
-            cap = resolve_capability(chain_exploits[i][1].capability)
-            if cap in payload_methods:
-                return i, cap, False
+            for cap in resolve_capabilities(chain_exploits[i][1].capability):
+                if cap in payload_methods:
+                    return i, cap, False
 
-        # RFI/SSRF fallback: exploit needs RFI/SSRF, payload has AFU
+        # RFI fallback: exploit needs RFI, payload has AFU
         for i in range(len(chain_exploits) - 1, -1, -1):
-            cap = resolve_capability(chain_exploits[i][1].capability)
-            if cap in ("RFI", "SSRF") and "AFU" in payload_methods:
+            if "RFI" in resolve_capabilities(chain_exploits[i][1].capability) and "AFU" in payload_methods:
                 return i, "AFU", True
 
         # XSS→RCE adapter: XSS exploit + RCE payload (adapter bridges them)
         if self.xss_adapter_enabled and "RCE" in payload_methods:
             for i in range(len(chain_exploits) - 1, -1, -1):
-                cap = resolve_capability(chain_exploits[i][1].capability)
-                if cap == "XSS":
+                if "XSS" in resolve_capabilities(chain_exploits[i][1].capability):
                     return i, "RCE", False
 
         return None, None, False
@@ -970,7 +972,8 @@ class HWPApp(App):
             cves = " ".join(getattr(cls, "cves", []) or [])
             authors = " ".join(getattr(cls, "authors", []) or [])
             desc = getattr(cls, "description", "") or ""
-            searchable = f"{ref} {cls.type} {cls.slug} {cls.capability} {cves} {authors}".lower()
+            cap_str = " ".join(resolve_capabilities(cls.capability))
+            searchable = f"{ref} {cls.type} {cls.slug} {cap_str} {cves} {authors}".lower()
             if query and query not in searchable:
                 continue
 
@@ -992,8 +995,11 @@ class HWPApp(App):
 
         AUTH_WIDTH = 6
 
+        def _cap_str(cls):
+            return "/".join(resolve_capabilities(cls.capability)) or "?"
+
         def _cap_len(cls):
-            n = len(cls.capability) + 2
+            n = len(_cap_str(cls)) + 2
             if cls.delivers:
                 n += 3 + len(cls.delivers)
             return n
@@ -1012,7 +1018,7 @@ class HWPApp(App):
             label.append(display_ref.ljust(max_ref + 2), style="bold")
             label.append(cls.type.ljust(max_type + 1), style="dim")
 
-            cap_text = f"[{cls.capability}]"
+            cap_text = f"[{_cap_str(cls)}]"
             label.append(cap_text, style="bold cyan")
             used = len(cap_text)
             if cls.delivers:
@@ -1024,7 +1030,7 @@ class HWPApp(App):
                 label.append(" " * pad)
             label.append(" ")
 
-            if cls.auth_required:
+            if requires_auth(cls):
                 label.append("auth".ljust(AUTH_WIDTH), style="#ff8c00")
             else:
                 label.append("unauth".ljust(AUTH_WIDTH), style="green")
@@ -1116,7 +1122,7 @@ class HWPApp(App):
 
         for ref, cls in self.selected_exploits():
             opts = getattr(cls, "options", None) or []
-            is_xss = resolve_capability(cls.capability) == "XSS"
+            is_xss = "XSS" in resolve_capabilities(cls.capability)
             # Render an exploit column if it has options OR it's an XSS exploit
             # (the XSS column hosts the XSS→RCE adapter toggle even with no opts).
             if opts or is_xss:
@@ -1214,7 +1220,7 @@ class HWPApp(App):
             # exploit has no other options. Toggling re-enables RCE payloads.
             if scope == "exploit":
                 ecls = self.exploit_catalog.get(scope_id)
-                if ecls and resolve_capability(ecls.capability) == "XSS":
+                if ecls and "XSS" in resolve_capabilities(ecls.capability):
                     col.mount(Static(""))
                     col.mount(AdapterCheckbox(
                         "Enable XSS→RCE adapter",

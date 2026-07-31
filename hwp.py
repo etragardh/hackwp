@@ -65,6 +65,8 @@ def parse_args():
     parser.add_argument("--cookie", help="Inject session cookie string")
     parser.add_argument("--xss-rce-adapter", action="store_true",
                         help="Enable core XSS→RCE adapter (drops RCE payload via stored XSS)")
+    parser.add_argument("--auth-rce-adapter", action="store_true",
+                        help="Enable core AUTH→RCE adapter (drops RCE payload via stored admin session, no exploit)")
     parser.add_argument("--adapter-debug", action="store_true",
                         help="Stream XSS→RCE adapter JS telemetry to the beacon listener (/dbg)")
     parser.add_argument("--clear-session", action="store_true",
@@ -93,6 +95,8 @@ def parse_args():
     # Surface known flags that chain.py reads from the options dict
     if getattr(args, "xss_rce_adapter", False):
         options["xss-rce-adapter"] = True
+    if getattr(args, "auth_rce_adapter", False):
+        options["auth-rce-adapter"] = True
     if getattr(args, "adapter_debug", False):
         options["adapter-debug"] = True
     if getattr(args, "cookie", None):
@@ -208,7 +212,7 @@ def cmd_exploit(args, options):
 
     # Load exploits
     exploit_classes = []
-    for ref in args.exploit:
+    for ref in (args.exploit or []):
         cls = load_exploit(ref, EXPLOITS_DIR)
         if cls is None:
             return
@@ -284,7 +288,9 @@ def main():
         cmd_scan(args, options)
         return
 
-    if args.exploit:
+    # Exploit chain, or a payload-only run (e.g. the AUTH→RCE adapter delivers
+    # an RCE payload via a stored admin session with no exploit).
+    if args.exploit or (args.payload and args.target):
         cmd_exploit(args, options)
         return
 

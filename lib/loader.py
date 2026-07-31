@@ -8,7 +8,7 @@ Payload path: payloads/{name}/main.py
 import os
 import sys
 import importlib.util
-from lib.exploit import Exploit
+from lib.exploit import Exploit, validate_exploit_class
 from lib.payload import Payload
 from lib import output
 
@@ -52,7 +52,14 @@ def load_exploit(exploit_ref, exploits_dir):
     if not os.path.isfile(filepath):
         output.error(f"Exploit not found: {filepath}")
         return None
-    return _load_class_from_file(filepath, Exploit)
+    cls = _load_class_from_file(filepath, Exploit)
+    if cls is None:
+        return None
+    err = validate_exploit_class(cls)
+    if err:
+        output.error(f"Invalid exploit {exploit_ref}: {err}")
+        return None
+    return cls
 
 
 def load_payload(payload_ref, payloads_dir):
